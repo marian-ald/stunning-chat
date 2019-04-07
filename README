@@ -1,0 +1,39 @@
+/*
+ * FAR projet - Iteration 1
+ * README
+ * Florine Pratlong
+ * Marian Aldescu
+ */
+
+	L'archive contiens les fichiers:
+		- server.c - server's implementation
+		- client.c - client's implementation
+		- helpers.h -  auxiliary header file
+		- Makefile - build/run rules
+
+
+	To compile, run:
+
+	make
+		or
+	make client
+	make server
+
+
+	To test:
+	Open a terminal and run the server:
+	make run_server
+
+	Open another terminal and run the client1:
+	make run _client
+
+	Open another terminal and run the client1:
+	make run _client
+
+
+	Type a message in client1 terminal
+	Type a message in client2 terminal
+
+	To finish, type the message "fin"
+
+	The server continues to listen other connections.
