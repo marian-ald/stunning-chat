@@ -39,6 +39,20 @@ int CHECK_fin_message(char* message) {
 	return 0;
 }
 
+void *lire() {
+  pthread_mutex_lock(&the_mutex);
+  
+  pthread_mutex_unlock(&the_mutex);  
+}
+
+void *ecrire() {
+  pthread_mutex_lock(&the_mutex);
+  
+  pthread_mutex_unlock(&the_mutex);    
+}
+
+
+
 int main(int argc, char* argv[]) 
 {
 
@@ -83,7 +97,18 @@ int main(int argc, char* argv[])
 
     printf("From server: %s\n", buff_recv);
 
-    while (!stop_chat) {
+    
+
+
+
+    int i = 0;  
+	while(i < N) {
+		pthread_create(&my_thread1[i], 0, lire, 0);
+		pthread_create(&my_thread2[i], 0, ecrire, 0);
+		i++;
+	}
+
+    /* while (!stop_chat) {
 		// Client is waiting for a message from server
 		bzero(buff_recv, MAX);
 		return_val = recv(sockfd, buff_recv, MAX, 0); 
@@ -99,7 +124,7 @@ int main(int argc, char* argv[])
 			type_and_send(buff_send, MAX, sockfd);
 			stop_chat = CHECK_fin_message(buff_send);
 		}
-	}
+	} */ 
 
 	close(sockfd); 
 } 
