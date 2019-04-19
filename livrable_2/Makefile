@@ -1,12 +1,12 @@
 # Makefile
 
-CFLAGS = -Wall -g
+CFLAGS = -Wall -g -pthread
 
 # The port on which the server listens to
 PORT = 8080
 
 # Server's IP
-IP_SERVER = 162.38.111.62
+IP_SERVER = 127.0.0.1
 
 all: server client 
 
