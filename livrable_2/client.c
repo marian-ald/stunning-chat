@@ -5,32 +5,20 @@
 #include <sys/socket.h> 
 #include <arpa/inet.h>
 #include <unistd.h>
+#include <pthread.h>
+#include <signal.h>
 
 #include "helpers.h"
 
 #define MAX 80 
-
-#define IP "127.0.0.1"
-#define PORT 8080
 #define SA struct sockaddr 
+
  
-
-/* function
- * Reads a message from keyboard into the buffer and sends to
- * the channel defined by sockfd
-*/
-void type_and_send(char* buffer, int dimens, int sockfd) {
-	int pos = 0;
-	int return_val;
-
-	printf("You> ");
-	while ((buffer[pos++] = getchar()) != '\n');
-	return_val = send(sockfd, buffer, dimens, 0); 
-	CHECK(return_val < 0, "Error receiving message from server");
-}
+pthread_t threads[2];
 
 
-int CHECK_fin_message(char* message) {
+int CHECK_fin_message(char* message)
+{
 	if (strncmp(message, "fin", 3) == 0)
 	{
 		printf("Client has stopped\n");
@@ -39,30 +27,61 @@ int CHECK_fin_message(char* message) {
 	return 0;
 }
 
-void *lire() {
-  pthread_mutex_lock(&the_mutex);
-  
-  pthread_mutex_unlock(&the_mutex);  
+/*
+ * Reads a message from keyboard into the buffer and sends to
+ * the channel defined by sockfd
+*/
+void *send_msg(void* fd)
+{
+	int *fd_server = (int *)fd;
+	int return_val;
+	char buffer[MAX];
+
+	while (1) {
+
+		fgets(buffer, MAX, stdin);
+		printf("\n");
+		return_val = send(*fd_server, buffer, MAX, 0);
+		CHECK(return_val < 0, "Client fails sending message to server");
+
+		if (CHECK_fin_message(buffer)) {
+			pthread_cancel(threads[1]);
+			break;
+		}
+	}
+
+	return 0;
 }
 
-void *ecrire() {
-  pthread_mutex_lock(&the_mutex);
-  
-  pthread_mutex_unlock(&the_mutex);    
+/* Function which received a message from server and print it
+*/
+void *receive_msg(void* fd)
+{
+	int *fd_server = (int *)fd;
+	int return_val;
+	char buffer[MAX];
+
+	while (1) {
+		return_val = recv(*fd_server, buffer, MAX, 0); 
+		CHECK(return_val < 0, "Client fails receiving message from server");
+		printf("The other side: ");
+		puts(buffer);
+
+		if (CHECK_fin_message(buffer)) {
+			pthread_cancel(threads[0]);
+			break;
+		}
+	}
+	return 0;
 }
 
 
-
-int main(int argc, char* argv[]) 
+int main(int argc, char* argv[])
 {
 
-	char buff_send[MAX];
 	char buff_recv[MAX];
-
 	int sockfd; 
 	int return_val;
-	int stop_chat = 0;
-
 	struct sockaddr_in servaddr; 
 
 	if (argc < 3)
@@ -71,8 +90,8 @@ int main(int argc, char* argv[])
 		exit(0);
 	}
 
-	sockfd = socket(AF_INET, SOCK_STREAM, 0);
 
+	sockfd = socket(AF_INET, SOCK_STREAM, 0);
 	if (sockfd != -1) {
 		printf("Success creating client socket\n");
 	} else {
@@ -95,36 +114,25 @@ int main(int argc, char* argv[])
 	return_val = recv(sockfd, buff_recv, MAX, 0); 
 	CHECK(return_val < 0, "Error receiving the message from server");
 
-    printf("From server: %s\n", buff_recv);
+	printf("Server: %s\n", buff_recv);
 
-    
+	/*
+	Create 2 threads:
+		- the first thread reads from keyboard and sends to server->client 2
+		- the second thread receives from client 2 and sends to server->client 1
+	*/
+	return_val = pthread_create(&threads[0], 0, send_msg, (void *)(&sockfd));
+	CHECK(return_val != 0, "Failed to create thread");
 
+	return_val = pthread_create(&threads[1], 0, receive_msg, (void *)(&sockfd));
+	CHECK(return_val != 0, "Failed to create thread");
 
-
-    int i = 0;  
-	while(i < N) {
-		pthread_create(&my_thread1[i], 0, lire, 0);
-		pthread_create(&my_thread2[i], 0, ecrire, 0);
-		i++;
+	for (int i = 0; i < 2; ++i)
+	{
+		return_val = pthread_join(threads[i], 0);
+		CHECK(return_val != 0, "Failed to join thread");
 	}
 
-    /* while (!stop_chat) {
-		// Client is waiting for a message from server
-		bzero(buff_recv, MAX);
-		return_val = recv(sockfd, buff_recv, MAX, 0); 
-		CHECK(return_val < 0, "Error receiving the message from server");
-
-	    printf("From server> %s\n", buff_recv);
-
-	    // If "fin" message is received, stop the chat
-		stop_chat = CHECK_fin_message(buff_recv);
-	    if (!stop_chat) {
-
-			// Type a message to send to the server
-			type_and_send(buff_send, MAX, sockfd);
-			stop_chat = CHECK_fin_message(buff_send);
-		}
-	} */ 
-
-	close(sockfd); 
+	return_val = close(sockfd);
+	CHECK(return_val != 0, "Fail closing socket");
 } 

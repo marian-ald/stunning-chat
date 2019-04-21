@@ -107,13 +107,15 @@ int main(int argc, char* argv[])
 	}
 
 	len_cli = sizeof(len_cli);
-	while (1) {
+	while (1)
+	{
 		// The server waits the connection of 2 clients
 		for (int i = 0; i < 2; ++i)
 		{
 			fd_client[i] = accept(sockfd, (SA*)&cli, &len_cli);
 
-			if (fd_client[i] < 0) { 
+			if (fd_client[i] < 0)
+			{ 
 				printf("Server fails accepting client_%d\n", i + 1); 
 				exit(0); 
 			} else {
@@ -170,6 +172,7 @@ int main(int argc, char* argv[])
     free(arg_thread);
 
 	// Close the server's socket for accepting clients
-	close(sockfd); 
+	return_val = close(sockfd);
+	CHECK(return_val < 0, "Error closing socket");
 } 
 
