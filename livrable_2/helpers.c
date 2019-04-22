@@ -6,6 +6,8 @@
 
 #include "helpers.h"
 
+pthread_mutex_t lock;
+
 /* The function receives a message from a client and the send
 	a brodcast of that message to all other s */
 void* recv_send(void* c_array_v)
@@ -19,6 +21,11 @@ void* recv_send(void* c_array_v)
 	int id = crt_client->position;
 	int fd_client = c_array->array[id].fd;
 
+	sprintf(buffer, "Start chat\n"); 	
+	return_val = send(c_array->array[id].fd, buffer, strlen(buffer), 0); 
+	CHECK(return_val < 0, "Server fails sending start_chat message to client");
+
+
 	while(1)
 	{
 		/* Receive a message from a client */
@@ -29,8 +36,14 @@ void* recv_send(void* c_array_v)
 		for (int i = 0; i < c_array->pos; ++i)
 		{
 			if (c_array->array[i].thread_nb != id) {
-				return_val = send(c_array->array[i].fd, buffer, MAX, 0); 
+				return_val = pthread_mutex_lock(&lock);
+				CHECK(return_val < 0, "Fail locking the mutex");
+
+				return_val = send(c_array->array[i].fd, buffer, MAX, 0);
 				CHECK(return_val < 0, "Server fails sending message to client");
+
+				return_val = pthread_mutex_unlock(&lock);  
+				CHECK(return_val < 0, "Fail unlocking the mutex");
 			}
 		}
 
@@ -58,6 +71,9 @@ client_array_t* init_array(client_array_t* client_array)
 	client_array->size = 1;
 	client_array->pos = 0;
 
+	int return_val = pthread_mutex_init(&lock, NULL);
+	CHECK(return_val < 0, "Error to init the mutex");
+
 	return client_array;
 }
 
@@ -65,6 +81,8 @@ client_array_t* init_array(client_array_t* client_array)
 void deinit_array(client_array_t* client_array)
 {
 	free(client_array->array);
+	int return_val = pthread_mutex_destroy(&lock);
+	CHECK(return_val < 0, "Error to destroy the mutex");
 }
 
 /* Add the information for each client in the array */

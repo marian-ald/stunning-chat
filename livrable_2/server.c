@@ -14,6 +14,7 @@
 // Useful defines
 #define MAX 80 
 #define SA struct sockaddr 
+#define NB_CLIENTS 2
 
 typedef struct arg_thread_t {
 	int* fd;
@@ -98,10 +99,10 @@ int main(int argc, char* argv[])
 
 	// Allocate space for the argument structure needed by pthread_create
 	// arg_thread = (arg_thread_t *)malloc(2 * sizeof(arg_thread_t));
-	arg_thread = malloc(2 * sizeof(arg_thread_t));
+	arg_thread = malloc(NB_CLIENTS * sizeof(arg_thread_t));
 	CHECK(arg_thread == NULL, "Malloc failed");
 
-	for (i = 0; i < 2; ++i) {
+	for (i = 0; i < NB_CLIENTS; ++i) {
 		arg_thread[i].fd = fd_client;
 		arg_thread[i].thread_nb = i;
 	}
@@ -110,7 +111,7 @@ int main(int argc, char* argv[])
 	while (1)
 	{
 		// The server waits the connection of 2 clients
-		for (int i = 0; i < 2; ++i)
+		for (int i = 0; i < NB_CLIENTS; ++i)
 		{
 			fd_client[i] = accept(sockfd, (SA*)&cli, &len_cli);
 
@@ -126,39 +127,35 @@ int main(int argc, char* argv[])
 				sprintf(buffer, "Hello, client! Please wait for the other client to connect\n"); 
 				return_val = send(fd_client[i], buffer, strlen(buffer), 0); 
 				CHECK(return_val < 0, "Server fails sending hello message to client");
-			} else {
-				// Send start_chat message to client2
-				sprintf(buffer, "Hello, client! Type a message\n"); 
-				return_val = send(fd_client[i], buffer, strlen(buffer), 0); 
-				CHECK(return_val < 0, "Server fails sending hello message to client");
 			}
 		}
-
-		// Notify client1 that it can start chatting
-		sprintf(buffer, "The other client is connected\n"); 
-		return_val = send(fd_client[0], buffer, strlen(buffer), 0); 
-		CHECK(return_val < 0, "Server fails sending hello message to client");
-
+		for (int i = 0; i < NB_CLIENTS; ++i)
+		{
+			// Notify clients that they can start chatting
+			sprintf(buffer, "START_CHAT\n"); 
+			return_val = send(fd_client[i], buffer, strlen(buffer), 0); 
+			CHECK(return_val < 0, "Server fails sending start_chat");
+		}
 		/*
 		Create 2 threads:
 			- the first thread receives from client 1 and sends to client 2
 			- the second thread receives from client 2 and sends to client 1
 		*/
-		for (int i = 0; i < 2; ++i)
+		for (int i = 0; i < NB_CLIENTS; ++i)
 		{
 			return_val = pthread_create(&threads[i], 0, recv_send, (void *)(arg_thread) + i * sizeof(arg_thread_t));
 			CHECK(return_val != 0, "Failed to create thread");
 		}
 
 		/* Join the 2 threads */
-		for (int i = 0; i < 2; ++i)
+		for (int i = 0; i < NB_CLIENTS; ++i)
 		{
 			return_val = pthread_join(threads[i], 0);
 			CHECK(return_val != 0, "Failed to join thread");
 		}
 
 		/* Close the two sockets after ending the conversation */
-		for (int i = 0; i < 2; ++i)
+		for (int i = 0; i < NB_CLIENTS; ++i)
 		{
 			return_val = close(fd_client[i]);
 			CHECK(return_val < 0, "Error closing socket for client");

@@ -85,11 +85,7 @@ int main(int argc, char* argv[])
 		}
 		/* Send start_chat to each client */
 		for (int i = 0; i < nb_clients; ++i)
-		{	
-			sprintf(buffer, "Start chat\n"); 	
-			int return_val = send(client_array->array[i].fd, buffer, strlen(buffer), 0); 
-			CHECK(return_val < 0, "Server fails sending start_chat message to client");
-
+		{
 			/* Create a thread for each client */
 			start_client(client_array, i);
 		}
