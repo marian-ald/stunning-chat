@@ -10,7 +10,6 @@
 
 #include "helpers.h"
 
-#define MAX 80 
 #define SA struct sockaddr 
 
  
@@ -25,6 +24,46 @@ int CHECK_fin_message(char* message)
 		return 1;
 	}
 	return 0;
+}
+
+int is_file_msg(char* message)
+{
+	//strncmp(message, "file", 4) == 0 ? return 1 : return 0
+	if (strncmp(message, "file", 4) == 0)
+	{
+		printf("Trebuie sa trimit un fisier\n");
+		return 1;
+	}
+	return 0;
+
+}
+
+int fsize(FILE *fp){
+    int prev, size;
+
+	prev = ftell(fp);
+    fseek(fp, 0L, SEEK_END);
+    size = ftell(fp);
+    fseek(fp, prev, SEEK_SET);
+    return size;
+}
+
+void send_file(int fd) {
+
+	FILE* fp;
+	int f_size;
+	int nb_package;
+	int *file_name = "send/test_fis";
+
+	fp = fopen(file_name, "r");
+	f_size = fsize(fp);
+	nb_package = f_size / MAX;
+
+
+	// todo in loc de print fac send
+	print("nume fisier: %s", file_name)
+	printf("size file = %d", f_size);
+	
 }
 
 /*
@@ -47,6 +86,10 @@ void *send_msg(void* fd)
 		if (CHECK_fin_message(buffer)) {
 			pthread_cancel(threads[1]);
 			break;
+		}
+		if (is_file_msg(buffer)) {
+			// todo pornesc thread nou
+			send_file(*fd_server);
 		}
 	}
 
