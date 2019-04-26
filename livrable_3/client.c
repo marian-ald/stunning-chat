@@ -31,40 +31,13 @@ int is_file_msg(char* message)
 	//strncmp(message, "file", 4) == 0 ? return 1 : return 0
 	if (strncmp(message, "file", 4) == 0)
 	{
-		printf("Trebuie sa trimit un fisier\n");
+		// printf("Trebuie sa trimit un fisier\n");
 		return 1;
 	}
 	return 0;
 
 }
 
-int fsize(FILE *fp){
-    int prev, size;
-
-	prev = ftell(fp);
-    fseek(fp, 0L, SEEK_END);
-    size = ftell(fp);
-    fseek(fp, prev, SEEK_SET);
-    return size;
-}
-
-void send_file(int fd) {
-
-	FILE* fp;
-	int f_size;
-	int nb_package;
-	int *file_name = "send/test_fis";
-
-	fp = fopen(file_name, "r");
-	f_size = fsize(fp);
-	nb_package = f_size / MAX;
-
-
-	// todo in loc de print fac send
-	print("nume fisier: %s", file_name)
-	printf("size file = %d", f_size);
-	
-}
 
 /*
  * Reads a message from keyboard into the buffer and sends to
@@ -74,7 +47,7 @@ void *send_msg(void* fd)
 {
 	int *fd_server = (int *)fd;
 	int return_val;
-	char buffer[MAX];
+	char *buffer = (char*)malloc(MAX * sizeof(char));
 
 	while (1) {
 
@@ -88,8 +61,20 @@ void *send_msg(void* fd)
 			break;
 		}
 		if (is_file_msg(buffer)) {
-			// todo pornesc thread nou
-			send_file(*fd_server);
+			// todo pornesc thread nou send
+			// sprintf(buffer, "%s", "test_fis\0");
+			list_dir();
+			fgets(buffer, MAX, stdin);
+			buffer[strlen(buffer) - 1] = '\0';
+			// buffer = strtok(buffer, "\n");
+			// if (file_exist(buffer))
+			// {
+				send_file(*fd_server, buffer);
+			// }
+			// else
+			// {
+			// 	printf("File %s does not exist\n", buffer);
+			// }
 		}
 	}
 
@@ -104,15 +89,22 @@ void *receive_msg(void* fd)
 	int return_val;
 	char buffer[MAX];
 
-	while (1) {
+	while (1)
+	{
 		return_val = recv(*fd_server, buffer, MAX, 0); 
 		CHECK(return_val < 0, "Client fails receiving message from server");
-		printf("The other side: ");
+		printf("Server: ");
 		puts(buffer);
 
-		if (CHECK_fin_message(buffer)) {
+		if (CHECK_fin_message(buffer))
+		{
 			pthread_cancel(threads[0]);
 			break;
+		}
+		if (is_file_msg(buffer))
+		{
+			// todo pornesc thread nou rcv
+			recv_file(*fd_server);
 		}
 	}
 	return 0;
@@ -135,7 +127,8 @@ int main(int argc, char* argv[])
 
 
 	sockfd = socket(AF_INET, SOCK_STREAM, 0);
-	if (sockfd != -1) {
+	if (sockfd != -1)
+	{
 		printf("Success creating client socket\n");
 	} else {
 		printf("Failed creating client socket\n");

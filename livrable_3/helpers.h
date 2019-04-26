@@ -3,7 +3,8 @@
 
 // Maximum length of the message
 #define MAX 80 
-
+#define RCV_DIR "recv/"
+#define SEND_DIR "send/"
 
 /* useful macro for handling error codes */
 #define CHECK(assertion, call_description)	\
@@ -16,34 +17,19 @@
 		}									\
 	} while (0)
 
-typedef struct client_info
+typedef struct mesg
 {
-	pthread_t thread;
-	int fd;
-	int thread_nb;
-} client_info_t;
+	char* buffer;
+	int next;
+} mesg_t;
 
 
-typedef struct clients_array
-{
-	client_info_t* array;
-	int size;
-	int pos;
-	int start_pos;
-} client_array_t;
+int fsize(FILE *fp);
 
-typedef struct crt_client
-{
-	client_array_t *c_array;
-	int position;
-} crt_client_t;
+void send_file(int fd, char* file_name);
 
-client_array_t* init_array(client_array_t* client_array);
+void recv_file(int fd);
 
-void add_client(client_array_t* c_array, int fd);
+void list_dir();
 
-void finish_clients(client_array_t* c_array);
-
-void start_client(client_array_t* clients_array, int client_id);
-
-void deinit_array(client_array_t* client_array);
+int file_exist (char *file_name);

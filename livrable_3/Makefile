@@ -20,7 +20,7 @@ server: server.c
 server_v2: server_v2.c helpers.c
 
 # Compile client.c
-client: client.c
+client: client.c helpers.c
 
 .PHONY: clean run_server run_client
 

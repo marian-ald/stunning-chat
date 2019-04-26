@@ -3,131 +3,149 @@
 #include <pthread.h>
 #include <netinet/in.h> 
 #include <string.h>
+#include <stdio.h>
+#include <dirent.h>
+#include <unistd.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 
 #include "helpers.h"
 
-pthread_mutex_t lock;
+int fsize(FILE *fp){
+    int prev, size;
 
-/* The function receives a message from a client and the send
-	a brodcast of that message to all other s */
-void* recv_send(void* c_array_v)
+	prev = ftell(fp);
+    fseek(fp, 0L, SEEK_END);
+    size = ftell(fp);
+    fseek(fp, prev, SEEK_SET);
+    return size;
+}
+
+void send_chunk(char* buffer, int fd)
 {
+	int return_val = send(fd, buffer, MAX, 0);
+	CHECK(return_val < 0, "Client fails sending message to server");
+}
 
-	crt_client_t* crt_client = (crt_client_t*)c_array_v;
-	client_array_t* c_array = crt_client->c_array;
+int recv_chunk(char* buffer, int fd)
+{
+	bzero(buffer, MAX); 
+	int return_val = recv(fd, buffer, MAX, 0);
+	CHECK(return_val < 0, "Client fails recv message from the server");
 
+	return strlen(buffer);
+}
+
+void send_file(int fd, char* file_name)
+{
+	FILE* fp = NULL;
+	int f_size;
+
+	// char *file_name = "send/test_fis";
 	char buffer[MAX];
-	int return_val;
-	int id = crt_client->position;
-	int fd_client = c_array->array[id].fd;
+	char* path_file;
 
-	sprintf(buffer, "Start chat\n"); 	
-	return_val = send(c_array->array[id].fd, buffer, strlen(buffer), 0); 
-	CHECK(return_val < 0, "Server fails sending start_chat message to client");
+	path_file = (char*)malloc(sizeof(SEND_DIR) + strlen(file_name));
+	sprintf(path_file, "%s%s", SEND_DIR, file_name);
+
+	fp = fopen(path_file, "r");
+	if (fp == NULL) {
+		// printf("len |%s| nume %d\n", file_name, strlen(file_name));
+		printf(">>>>> File %s does not exist <<<<<\n", file_name);
+		return;
+	}
+	f_size = fsize(fp);
 
 
-	while(1)
+	/* Send the filename to the server */
+	send_chunk(file_name, fd);
+
+
+
+	/* Send the number of chunks of the file to the server */
+	sprintf(buffer, "%d", f_size);
+	// itoa(nb_chunks, buffer, 10);
+	send_chunk(buffer, fd);
+
+
+	// todo in loc de print fac send
+	printf("nume fisier: %s\n", file_name);
+	printf("size file = %d\n", f_size);
+
+	// printf("nb pachete = %f\n", (float)f_size / MAX);
+	while (fgets(buffer, MAX, fp) != NULL) {
+		// printf("%s\n", buffer);
+		/* Send each chunk of the file to the server */
+		send_chunk(buffer, fd);
+		// printf("trimit:%s\n", buffer);
+	}
+	printf(">>>>> File successfully sent <<<<<\n");
+	free(path_file);
+	fclose(fp);
+}
+
+void recv_file(int fd)
+{
+	FILE* fp = NULL;
+	int f_size;
+	char *file_name;
+	char buffer[MAX];
+
+	recv_chunk(buffer, fd);
+	file_name = (char *)malloc(sizeof(RCV_DIR) + strlen(buffer));
+	sprintf(file_name, "%s%s", RCV_DIR, buffer);
+	// printf("file_name is %s\n", );
+	// printf("path fisier:  %s\n", file_name);
+
+	/* Open destination file */
+	fp = fopen(file_name, "w");
+	CHECK(fp == NULL, "Failed to open destination file");
+	// printf("fp = %d\n", fp);
+
+	recv_chunk(buffer, fd);
+
+	f_size = atoi(buffer);
+	// printf("f_size = %d\n", f_size);
+
+
+	while (f_size > 0) {
+		// printf("%s\n", buffer);
+		int nb_B_recv = recv_chunk(buffer, fd);
+		fputs(buffer, fp);
+		f_size -= nb_B_recv;
+		// printf("f_size = %d ||||| buffer = %s\n", f_size, buffer);
+
+	}
+	fclose(fp);
+}
+
+int file_exist (char *file_name)
+{
+	struct stat buffer;
+	char* path_file = (char *)malloc(sizeof(RCV_DIR) + strlen(file_name));
+	sprintf(path_file, "%s%s", RCV_DIR, file_name);
+	// printf("testez daca exista fis: %s\n", path_file);
+	return (stat (path_file, &buffer) == 0);
+}
+
+void list_dir()
+{
+	DIR *dp;
+	struct dirent *ep;     
+	dp = opendir (SEND_DIR);
+	if (dp != NULL)
 	{
-		/* Receive a message from a client */
-		return_val = recv(fd_client, buffer, MAX, 0);
-		CHECK(return_val < 0, "Server fails receiving message from client");
-
-		/* Send the message to the other clients */
-		for (int i = 0; i < c_array->pos; ++i)
+		printf(">>>>> Choose a file to send from: <<<<<\n");
+		while ((ep = readdir (dp)))
 		{
-			if (c_array->array[i].thread_nb != id) {
-				return_val = pthread_mutex_lock(&lock);
-				CHECK(return_val < 0, "Fail locking the mutex");
-
-				return_val = send(c_array->array[i].fd, buffer, MAX, 0);
-				CHECK(return_val < 0, "Server fails sending message to client");
-
-				return_val = pthread_mutex_unlock(&lock);  
-				CHECK(return_val < 0, "Fail unlocking the mutex");
+			if(strcmp(ep->d_name,".")!=0 && strcmp(ep->d_name,"..")!=0) {
+				printf("%s\n",ep->d_name);
 			}
-		}
-
-		if (strncmp(buffer, "fin", 3) == 0)
-		{
-			/* Stop the threads after receiving 'fin' message */
-			for (int i = 0; i < c_array->pos; ++i)
-			{
-				if (c_array->array[i].thread_nb != id)
-				{
-            		pthread_cancel(c_array->array[i].thread);
-            		CHECK(return_val < 0, "Fail canceling thread");
-            	}
-            }
-			break;
-		}
+		}    
+		(void) closedir (dp);
 	}
-	return 0;
-}
-
-/* Initialize the struct for the array of clients */
-client_array_t* init_array(client_array_t* client_array)
-{
-	client_array->array = (client_info_t *)malloc(sizeof(client_info_t));
-	client_array->size = 1;
-	client_array->pos = 0;
-
-	int return_val = pthread_mutex_init(&lock, NULL);
-	CHECK(return_val < 0, "Error to init the mutex");
-
-	return client_array;
-}
-
-
-void deinit_array(client_array_t* client_array)
-{
-	free(client_array->array);
-	int return_val = pthread_mutex_destroy(&lock);
-	CHECK(return_val < 0, "Error to destroy the mutex");
-}
-
-/* Add the information for each client in the array */
-void add_client(client_array_t* c_array, int fd)
-{
-	/* If the array is full, double its dimension */
-	if (c_array->size == c_array->pos) {
-		c_array->array = realloc(c_array->array, 2 * c_array->size * sizeof(client_info_t));
-		c_array->size *= 2;
-	}
-
-	/* Allocate space for the pthread_t object in the client_info */
-	c_array->array[c_array->pos].fd = fd;
-	c_array->array[c_array->pos].thread_nb = c_array->pos;
-	c_array->pos++;
-}
-
-/* Create a thread for each client connected to the server */
-void start_client(client_array_t* c_array, int client_id)
-{
-	crt_client_t* crt_client;
-	int return_val;
-
-	crt_client = (crt_client_t *)malloc(sizeof(crt_client_t));
-	CHECK(crt_client == NULL, "Fail allocating memory");
-
-
-	crt_client->c_array = c_array;
-	crt_client->position = client_id;
-	c_array->start_pos = client_id;
-
-	return_val = pthread_create(&c_array->array[client_id].thread, 0, recv_send, (void *)crt_client);
-	CHECK(return_val != 0, "Fail to create thread");			
-}
-
-void finish_clients(client_array_t* c_array)
-{
-	int return_val;
-	/* Join the thread and close the socket for each client */
-	for (int i = 0; i < c_array->pos; ++i)
+	else
 	{
-		return_val = pthread_join(c_array->array[i].thread, 0);
-		CHECK(return_val != 0, "Fail joining client");
-
-		return_val = close(c_array->array[i].fd);
-		CHECK(return_val != 0, "Fail to close socket");		
+		perror ("Error opening the directory");
 	}
 }
