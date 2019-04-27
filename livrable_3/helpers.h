@@ -17,16 +17,23 @@
 		}									\
 	} while (0)
 
-typedef struct mesg
-{
-	char* buffer;
-	int next;
-} mesg_t;
+typedef struct param_send {
+	int fd;
+	char *file_name;
+} param_send_t;
 
+
+void create_main_threads();
+
+void join_main_threads();
 
 int fsize(FILE *fp);
 
-void send_file(int fd, char* file_name);
+void *receive_msg(void* fd);
+
+void *send_msg(void* fd);
+
+void *send_file(void *fd_p);
 
 void recv_file(int fd);
 

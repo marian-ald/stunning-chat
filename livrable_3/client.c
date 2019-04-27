@@ -12,103 +12,6 @@
 
 #define SA struct sockaddr 
 
- 
-pthread_t threads[2];
-
-
-int CHECK_fin_message(char* message)
-{
-	if (strncmp(message, "fin", 3) == 0)
-	{
-		printf("Client has stopped\n");
-		return 1;
-	}
-	return 0;
-}
-
-int is_file_msg(char* message)
-{
-	//strncmp(message, "file", 4) == 0 ? return 1 : return 0
-	if (strncmp(message, "file", 4) == 0)
-	{
-		// printf("Trebuie sa trimit un fisier\n");
-		return 1;
-	}
-	return 0;
-
-}
-
-
-/*
- * Reads a message from keyboard into the buffer and sends to
- * the channel defined by sockfd
-*/
-void *send_msg(void* fd)
-{
-	int *fd_server = (int *)fd;
-	int return_val;
-	char *buffer = (char*)malloc(MAX * sizeof(char));
-
-	while (1) {
-
-		fgets(buffer, MAX, stdin);
-		printf("\n");
-		return_val = send(*fd_server, buffer, MAX, 0);
-		CHECK(return_val < 0, "Client fails sending message to server");
-
-		if (CHECK_fin_message(buffer)) {
-			pthread_cancel(threads[1]);
-			break;
-		}
-		if (is_file_msg(buffer)) {
-			// todo pornesc thread nou send
-			// sprintf(buffer, "%s", "test_fis\0");
-			list_dir();
-			fgets(buffer, MAX, stdin);
-			buffer[strlen(buffer) - 1] = '\0';
-			// buffer = strtok(buffer, "\n");
-			// if (file_exist(buffer))
-			// {
-				send_file(*fd_server, buffer);
-			// }
-			// else
-			// {
-			// 	printf("File %s does not exist\n", buffer);
-			// }
-		}
-	}
-
-	return 0;
-}
-
-/* Function which received a message from server and print it
-*/
-void *receive_msg(void* fd)
-{
-	int *fd_server = (int *)fd;
-	int return_val;
-	char buffer[MAX];
-
-	while (1)
-	{
-		return_val = recv(*fd_server, buffer, MAX, 0); 
-		CHECK(return_val < 0, "Client fails receiving message from server");
-		printf("Server: ");
-		puts(buffer);
-
-		if (CHECK_fin_message(buffer))
-		{
-			pthread_cancel(threads[0]);
-			break;
-		}
-		if (is_file_msg(buffer))
-		{
-			// todo pornesc thread nou rcv
-			recv_file(*fd_server);
-		}
-	}
-	return 0;
-}
 
 
 int main(int argc, char* argv[])
@@ -152,22 +55,17 @@ int main(int argc, char* argv[])
 
 	printf("Server: %s\n", buff_recv);
 
-	/*
-	Create 2 threads:
-		- the first thread reads from keyboard and sends to server->client 2
-		- the second thread receives from client 2 and sends to server->client 1
+	/* Create 2 threads:
+		- one to receive messages
+		- one to send messages
 	*/
-	return_val = pthread_create(&threads[0], 0, send_msg, (void *)(&sockfd));
-	CHECK(return_val != 0, "Failed to create thread");
-
-	return_val = pthread_create(&threads[1], 0, receive_msg, (void *)(&sockfd));
-	CHECK(return_val != 0, "Failed to create thread");
-
-	for (int i = 0; i < 2; ++i)
-	{
-		return_val = pthread_join(threads[i], 0);
-		CHECK(return_val != 0, "Failed to join thread");
-	}
+	create_main_threads(&sockfd);
+	// for (int i = 0; i < 2; ++i)
+	// {
+	// 	return_val = pthread_join(threads[i], 0);
+	// 	CHECK(return_val != 0, "Failed to join thread");
+	// }
+	join_main_threads();
 
 	return_val = close(sockfd);
 	CHECK(return_val != 0, "Fail closing socket");
