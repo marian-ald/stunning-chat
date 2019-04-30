@@ -14,7 +14,7 @@ IP_SERVER = 127.0.0.1
 all: server client
 
 # Compile server.c
-server: server.c
+server: server.c helpers.c
 
 # Compile server_v2.c
 server_v2: server_v2.c helpers.c

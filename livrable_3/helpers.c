@@ -43,6 +43,11 @@ int recv_chunk(char* buffer, int fd)
 
 int CHECK_fin_message(char* message)
 {
+	char deserial[MAX];
+	strcpy(deserial, message);
+	char* type = strtok(deserial, "\n");
+
+	printf("========> %s\n", type);
 	if (strncmp(message, "fin", 3) == 0)
 	{
 		printf("Bye. Client has closed.\n");
@@ -63,6 +68,27 @@ int is_file_msg(char* message)
 
 }
 
+void serial_msg(char* msg, char* buffer, int type) {
+	// memcpy(buffer, &cli_info->port, sizeof(int));
+	// memcpy(buffer + sizeof(int), cli_info->IP, strlen(cli_info->IP) + 1);
+	sprintf(buffer, "%d\n%s", type, msg);
+}
+
+
+FILE* file_exists(char* file_name) {
+	char* path_file = (char*)malloc(sizeof(SEND_DIR) + strlen(file_name));
+	sprintf(path_file, "%s%s", SEND_DIR, file_name);
+
+	/* Test if the file exists in the directory */
+	FILE* fp = fopen(path_file, "r");
+	if (fp == NULL) {
+		// printf("len |%s| nume %d\n", file_name, strlen(file_name));
+		printf("______ File %s does not exist ______\n", file_name);
+		return NULL;
+	}
+	return fp;
+}
+
 
 /*
  * Reads a message from keyboard into the buffer and sends to
@@ -72,22 +98,16 @@ void *send_msg(void* fd)
 {
 	int *fd_server = (int *)fd;
 	int return_val;
-	char *buffer = (char*)malloc(MAX * sizeof(char));
-	char *file_name = (char*)malloc(MAX * sizeof(char));
+	char buffer[MAX];
+	char file_name[MAX];
+	char buff_ser[MAX];
 
 	while (1)
 	{
 
 		fgets(buffer, MAX, stdin);
 		printf("\n");
-		return_val = send(*fd_server, buffer, MAX, 0);
-		CHECK(return_val < 0, "Client fails sending message to server");
 
-		if (CHECK_fin_message(buffer))
-		{
-			pthread_cancel(threads[1]);
-			break;
-		}
 		if (is_file_msg(buffer))
 		{
 			// todo pornesc thread nou send
@@ -98,14 +118,29 @@ void *send_msg(void* fd)
 			// send_file(fd_server);
 			if (!file_is_sending)
 			{
-				file_is_sending = 1;
+
+
+
+
 				list_dir();
 				fgets(file_name, MAX, stdin);
 				file_name[strlen(file_name) - 1] = '\0';
-
+				FILE* fp = file_exists(file_name);
+				if (fp == NULL)
+				{
+					continue;
+				}
+				else
+				{
+					sprintf(buffer, "%d\nfile\n", CTRL_FILE);
+					send_chunk(buffer, *fd_server);
+				}
+				file_is_sending = 1;
 				param_send_t p_send;
 				p_send.fd = *fd_server;
 				p_send.file_name = file_name;
+				p_send.other = fp;
+
 
 				return_val = pthread_create(&threads[2], 0, send_msg, (void *)fd_server);
 				return_val = pthread_create(&threads[3], 0, send_file, (void *)(&p_send));
@@ -123,11 +158,22 @@ void *send_msg(void* fd)
 			{
 				printf("Another file is sending now. Please wait\n");
 			}
+			continue;
+		}
+
+		// void serial_msg(char* msg, char* buffer, int type) {
+
+		serial_msg(buffer, buff_ser, CTRL_FILE);
+		return_val = send(*fd_server, buff_ser, MAX, 0);
+		CHECK(return_val < 0, "Client fails sending message to server");
+
+		if (CHECK_fin_message(buffer))
+		{
+			pthread_cancel(threads[1]);
+			return 0;
 		}
 	}
-	free(buffer);
-	free(file_name);
-
+	
 	return 0;
 }
 
@@ -162,11 +208,11 @@ void *receive_msg(void* fd)
 void *send_file(void* param_send)
 {
 	param_send_t p_send = *(param_send_t*)param_send;
-	FILE* fp = NULL;
+	FILE* fp = (FILE*)p_send.other	;
 	int f_size;
 	int fd = p_send.fd;
 	char buffer[MAX];
-	char* path_file;
+	// char* path_file;
 
 
 	/* 	List all the files from the source directory and choose a file
@@ -176,16 +222,16 @@ void *send_file(void* param_send)
 	// fgets(file_name, MAX, stdin);
 	// file_name[strlen(file_name) - 1] = '\0';
 
-	path_file = (char*)malloc(sizeof(SEND_DIR) + strlen(p_send.file_name));
-	sprintf(path_file, "%s%s", SEND_DIR, p_send.file_name);
+	// path_file = (char*)malloc(sizeof(SEND_DIR) + strlen(p_send.file_name));
+	// sprintf(path_file, "%s%s", SEND_DIR, p_send.file_name);
 
-	/* Test if the file exists in the directory */
-	fp = fopen(path_file, "r");
-	if (fp == NULL) {
-		// printf("len |%s| nume %d\n", file_name, strlen(file_name));
-		printf(">>>>> File %s does not exist <<<<<\n", p_send.file_name);
-		return NULL;
-	}
+	// /* Test if the file exists in the directory */
+	// fp = fopen(path_file, "r");
+	// if (fp == NULL) {
+	// 	// printf("len |%s| nume %d\n", file_name, strlen(file_name));
+	// 	printf("______ File %s does not exist ______\n", p_send.file_name);
+	// 	return NULL;
+	// }
 	f_size = fsize(fp);
 
 
@@ -212,8 +258,8 @@ void *send_file(void* param_send)
 		// sleep(5);
 		// printf("trimit:%s\n", buffer);
 	}
-	printf(">>>>> File successfully sent <<<<<\n");
-	free(path_file);
+	printf("______ File successfully sent ______\n");
+	// free(path_file);
 	fclose(fp);
 	pthread_cancel(threads[2]);
 	return NULL;
@@ -251,7 +297,7 @@ void recv_file(int fd)
 		// printf("f_size = %d ||||| buffer = %s\n", f_size, buffer);
 
 	}
-	printf(">>>>> File successfully received <<<<<\n");
+	printf("______ File successfully received ______\n");
 
 	fclose(fp);
 }
@@ -272,7 +318,7 @@ void list_dir()
 	dp = opendir (SEND_DIR);
 	if (dp != NULL)
 	{
-		printf(">>>>> Choose a file to send from: <<<<<\n");
+		printf("______ Choose a file to send from: ______\n");
 		while ((ep = readdir (dp)))
 		{
 			if(strcmp(ep->d_name,".")!=0 && strcmp(ep->d_name,"..")!=0) {
@@ -280,7 +326,7 @@ void list_dir()
 			}
 		}    
 		(void) closedir (dp);
-		printf(">>>>> ");
+		printf("______ ");
 	}
 	else
 	{

@@ -12,17 +12,24 @@
 #include "helpers.h"
 
 // Useful defines
-#define MAX 80 
-#define SA struct sockaddr 
 #define NB_CLIENTS 2
 
 typedef struct arg_thread_t {
 	int* fd;
 	int thread_nb;
+	cli_info_t cli_info;
 } arg_thread_t;
 
 
 pthread_t threads[2];
+
+
+void serial_cli_info(cli_info_t *cli_info, char* buffer, int type) {
+	// memcpy(buffer, &cli_info->port, sizeof(int));
+	// memcpy(buffer + sizeof(int), cli_info->IP, strlen(cli_info->IP) + 1);
+	sprintf(buffer, "%d%d\n%s", type, cli_info->port, cli_info->IP);
+}
+
 
 /* 	The function receives a mesage from a client and send it to the other
 
@@ -39,14 +46,28 @@ void* recv_send(void *arg_thread)
 	int write_to = thread_info->thread_nb;
 	int return_val;
 	char buffer[MAX];
+	// char buff_ser[MAX];
 
 	while (1) {
 		return_val = recv(fd_client_int[write_to], buffer, MAX, 0);
 		CHECK(return_val < 0, "Server fails receiving message from client");
 
+		printf("Serv primeste:%d |%s\n", strlen(buffer), buffer);
+
+		// serial_msg(buffer, buff_ser, TXT_MSG);
 		return_val = send(fd_client_int[1 - write_to], buffer, MAX, 0); 
 		CHECK(return_val < 0, "Server fails sending message to client");
 
+		if (is_file_msg(buffer) && strlen(buffer) == 5)
+		{
+			/* Send the IP/port to the source client */
+			serial_cli_info(&thread_info->cli_info, buffer, CTRL_PIP);
+			return_val = send(fd_client_int[write_to], buffer, MAX, 0); 
+			CHECK(return_val < 0, "Server fails sending message to client");
+			
+			printf("Serializare: %s\n", buffer);
+			continue;	
+		}
 		if (strncmp(buffer, "fin", 3) == 0) {
             pthread_cancel(threads[1 - write_to]);
 			break;
@@ -63,9 +84,10 @@ int main(int argc, char* argv[])
 	int sockfd;
 	socklen_t len_cli;
 	int return_val;
-	struct sockaddr_in servaddr, cli; 
+	struct sockaddr_in serv_addr, cli; 
 	arg_thread_t* arg_thread = NULL;
-	int i;
+	int i;	
+	cli_info_t cli_info[2];
 
 	if (argc < 2)
 	{
@@ -76,15 +98,17 @@ int main(int argc, char* argv[])
 	// from clients  
 	sockfd = socket(AF_INET, SOCK_STREAM, 0); 
 
-	bzero(&servaddr, sizeof(servaddr)); 
+	bzero(&serv_addr, sizeof(serv_addr)); 
 
 	// Set server's details: IPV4, address, port
-	servaddr.sin_family = AF_INET; 
-	servaddr.sin_addr.s_addr = htonl(INADDR_ANY); 
-	servaddr.sin_port = htons(atoi(argv[1])); 
+	serv_addr.sin_family = AF_INET; 
+	serv_addr.sin_addr.s_addr = htonl(INADDR_ANY); 
+	serv_addr.sin_port = htons(atoi(argv[1])); 
+	bzero(&(serv_addr.sin_zero),8); 
 
 	// Associate a port to the server's socket
-	bind(sockfd, (SA*)&servaddr, sizeof(servaddr));
+	return_val = bind(sockfd, (struct sockaddr*)&serv_addr, sizeof(struct sockaddr));
+	CHECK(return_val < 0, "Failed to bind");
 
 	if ((listen(sockfd, 5)) != 0) { 
 		printf("Listen failed...\n"); 
@@ -107,14 +131,26 @@ int main(int argc, char* argv[])
 		arg_thread[i].thread_nb = i;
 	}
 
-	len_cli = sizeof(len_cli);
+	len_cli = sizeof(struct sockaddr_in);
 	while (1)
 	{
 		// The server waits the connection of 2 clients
 		for (int i = 0; i < NB_CLIENTS; ++i)
 		{
-			fd_client[i] = accept(sockfd, (SA*)&cli, &len_cli);
+			fd_client[i] = accept(sockfd, (struct sockaddr*)&cli, &len_cli);
+			sleep(1);
+			printf("%d\n", cli);
+			// printf("L’adresse IP du client est : %s\n", (&cli)->sin_addr);
 
+			// printf("\nREQUEST FROM %s PORT %d \n", inet_ntop(AF_INET, &cli.sin_addr, str , sizeof(str)), cli.sin_port);
+	    	printf("\n I got a connection from (%s , %d)", inet_ntoa(cli.sin_addr),ntohs(cli.sin_port));
+
+	    	cli_info[i].port = ntohs(cli.sin_port);
+			strcpy(cli_info[i].IP, inet_ntoa(cli.sin_addr));
+			arg_thread[i].cli_info = cli_info[0];
+
+			// printf("Son numéro de port est : %d\n", (int) ntohs(cli.sin_port));
+			// printf("sssssssssssssssssssssssssssss\n");
 			if (fd_client[i] < 0)
 			{ 
 				printf("Server fails accepting client_%d\n", i + 1); 
@@ -129,6 +165,12 @@ int main(int argc, char* argv[])
 				CHECK(return_val < 0, "Server fails sending hello message to client");
 			}
 		}
+
+		for (int i = 0; i < 2; ++i)
+		{
+			printf("%d |||  %s\n", cli_info[i].port, cli_info[i].IP);
+		}
+
 		for (int i = 0; i < NB_CLIENTS; ++i)
 		{
 			// Notify clients that they can start chatting
