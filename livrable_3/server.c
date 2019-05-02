@@ -24,6 +24,7 @@ typedef struct arg_thread_t {
 pthread_t threads[2];
 
 
+
 void serial_cli_info(cli_info_t *cli_info, char* buffer, int type) {
 	// memcpy(buffer, &cli_info->port, sizeof(int));
 	// memcpy(buffer + sizeof(int), cli_info->IP, strlen(cli_info->IP) + 1);
@@ -52,29 +53,37 @@ void* recv_send(void *arg_thread)
 		return_val = recv(fd_client_int[write_to], buffer, MAX, 0);
 		CHECK(return_val < 0, "Server fails receiving message from client");
 
-		printf("Serv primeste:%d |%s\n", strlen(buffer), buffer);
+		printf("Serv primeste:%s|\n", buffer);
 
 		// serial_msg(buffer, buff_ser, TXT_MSG);
 		return_val = send(fd_client_int[1 - write_to], buffer, MAX, 0); 
 		CHECK(return_val < 0, "Server fails sending message to client");
 
-		if (is_file_msg(buffer) && strlen(buffer) == 5)
+		if (is_file_msg(buffer))
 		{
+			printf("intru S is file\n");
 			/* Send the IP/port to the source client */
-			serial_cli_info(&thread_info->cli_info, buffer, CTRL_PIP);
+
+			// serial_cli_info(&thread_info->cli_info, buffer, CTRL_PIP);
+			serial_msg(thread_info->cli_info.IP, buffer, CTRL_PIP);
 			return_val = send(fd_client_int[write_to], buffer, MAX, 0); 
 			CHECK(return_val < 0, "Server fails sending message to client");
 			
-			printf("Serializare: %s\n", buffer);
-			continue;	
+			// printf("Serializare: %s\n", buffer);
+			continue;
 		}
-		if (strncmp(buffer, "fin", 3) == 0) {
+
+		if (is_fin_msg(buffer))
+		{
+            printf("Server primeste fin\n");
             pthread_cancel(threads[1 - write_to]);
 			break;
 		}
+		// sleep(1);
 	}
 	return 0;
 }
+
 
 int main(int argc, char* argv[]) 
 {
@@ -160,7 +169,7 @@ int main(int argc, char* argv[])
 		  	}
 		  	if (i == 0) {
 				// Send hello message to client1
-				sprintf(buffer, "Hello, client! Please wait for the other client to connect\n"); 
+				sprintf(buffer, "%d-Hello, client! Please wait for the other client to connect\n", TXT_MSG); 
 				return_val = send(fd_client[i], buffer, strlen(buffer), 0); 
 				CHECK(return_val < 0, "Server fails sending hello message to client");
 			}
@@ -174,7 +183,7 @@ int main(int argc, char* argv[])
 		for (int i = 0; i < NB_CLIENTS; ++i)
 		{
 			// Notify clients that they can start chatting
-			sprintf(buffer, "START_CHAT\n"); 
+			sprintf(buffer, "%d-START_CHAT\n", TXT_MSG); 
 			return_val = send(fd_client[i], buffer, strlen(buffer), 0); 
 			CHECK(return_val < 0, "Server fails sending start_chat");
 		}

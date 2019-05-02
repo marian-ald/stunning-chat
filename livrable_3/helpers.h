@@ -6,10 +6,11 @@
 #define RCV_DIR "recv/"
 #define SEND_DIR "send/"
 
-#define TXT_MSG 0
-#define TXT_FIS 1
-#define CTRL_PIP 2 //port / ip
-#define CTRL_FILE 3
+// fin, msg text
+#define TXT_MSG 1
+#define TXT_FIS 2
+#define CTRL_PIP 3 //port / ip
+#define CTRL_FILE 4
 
 
 /* useful macro for handling error codes */
@@ -45,24 +46,36 @@ typedef struct cli_info {
 /*
 	type = 1: Control message port/ip
 */
-void create_main_threads();
+// void create_main_threads();
 
-void join_main_threads();
+// void join_main_threads();
+
+FILE* file_exists(char* file_name);
+
+void send_chunk(char* buffer, int fd);
+
+int recv_chunk(char* buffer, int fd);
 
 int fsize(FILE *fp);
 
-void *receive_msg(void* fd);
+void get_content(char* source, char* dest);
 
-void *send_msg(void* fd);
+void serial_msg(char* msg, char* buffer, int type);
 
-void *send_file(void *fd_p);
+// void *receive_msg(void* fd);
 
-void recv_file(int fd);
+// void *send_msg(void* fd);
+
+// void *send_file(void *fd_p);
+
+// void recv_file(int fd);
 
 void list_dir();
 
 int file_exist (char *file_name);
 
 int is_file_msg(char* message);
+
+int is_fin_msg(char* message);
 
 void serial_msg(char* msg, char* buffer, int type);
