@@ -1,6 +1,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#define NB_CLIENTS 2
+#define PORT_FILE 8888
+
 // Maximum length of the message
 #define MAX 80 
 #define RCV_DIR "recv/"
@@ -9,8 +12,9 @@
 // fin, msg text
 #define TXT_MSG 1
 #define TXT_FIS 2
-#define CTRL_PIP 3 //port / ip
+#define CTRL_IP 3 // IP
 #define CTRL_FILE 4
+#define CTRL_P_IP 5 // Port+IP
 
 
 /* useful macro for handling error codes */
@@ -24,9 +28,21 @@
 		}									\
 	} while (0)
 
+typedef struct cli_info {
+	int port;
+	char IP[20];
+	int type;
+} cli_info_t;
+
+typedef struct arg_thread_t {
+	int* fd;
+	int thread_nb;
+	cli_info_t cli_info;
+} arg_thread_t;
+
 typedef struct param_send {
 	int fd;
-	char *file_name;
+	char file_name[MAX];
 	void *other;
 } param_send_t;
 
@@ -37,20 +53,17 @@ typedef struct msg {
 	int type;
 } msg_t;
 
-typedef struct cli_info {
-	int port;
-	char IP[20];
-	int type;
-} cli_info_t;
+
 
 /*
 	type = 1: Control message port/ip
 */
-// void create_main_threads();
-
-// void join_main_threads();
 
 FILE* file_exists(char* file_name);
+
+int choose_files(int nb_files, param_send_t* f_details);
+
+int get_files_nb(char* buff);
 
 void send_chunk(char* buffer, int fd);
 
@@ -62,14 +75,6 @@ void get_content(char* source, char* dest);
 
 void serial_msg(char* msg, char* buffer, int type);
 
-// void *receive_msg(void* fd);
-
-// void *send_msg(void* fd);
-
-// void *send_file(void *fd_p);
-
-// void recv_file(int fd);
-
 void list_dir();
 
 int file_exist (char *file_name);
@@ -78,4 +83,10 @@ int is_file_msg(char* message);
 
 int is_fin_msg(char* message);
 
+int is_ctrl(char* message, int ctrl);
+
 void serial_msg(char* msg, char* buffer, int type);
+
+void parse_ip_port(char* buff, cli_info_t* cli);
+
+int choose_files_nb();

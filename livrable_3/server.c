@@ -11,18 +11,8 @@
 
 #include "helpers.h"
 
-// Useful defines
-#define NB_CLIENTS 2
-
-typedef struct arg_thread_t {
-	int* fd;
-	int thread_nb;
-	cli_info_t cli_info;
-} arg_thread_t;
-
 
 pthread_t threads[2];
-
 
 
 void serial_cli_info(cli_info_t *cli_info, char* buffer, int type) {
@@ -65,10 +55,12 @@ void* recv_send(void *arg_thread)
 			/* Send the IP/port to the source client */
 
 			// serial_cli_info(&thread_info->cli_info, buffer, CTRL_PIP);
-			serial_msg(thread_info->cli_info.IP, buffer, CTRL_PIP);
+			serial_msg(thread_info->cli_info.IP, buffer, CTRL_IP);
+
 			return_val = send(fd_client_int[write_to], buffer, MAX, 0); 
 			CHECK(return_val < 0, "Server fails sending message to client");
 			
+			printf("Server trimite %s\n", buffer);
 			// printf("Serializare: %s\n", buffer);
 			continue;
 		}

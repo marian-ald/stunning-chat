@@ -25,6 +25,7 @@ int fsize(FILE *fp){
 void send_chunk(char* buffer, int fd)
 {
 	int return_val = send(fd, buffer, MAX, 0);
+	printf("Client trimite: %s\n", buffer);
 	CHECK(return_val < 0, "Client fails sending message to server");
 }
 
@@ -32,6 +33,7 @@ int recv_chunk(char* buffer, int fd)
 {
 	bzero(buffer, MAX); 
 	int return_val = recv(fd, buffer, MAX, 0);
+	printf("Client primeste:%s\n", buffer);
 	CHECK(return_val < 0, "Client fails recv message from the server");
 
 	return strlen(buffer);
@@ -56,6 +58,25 @@ int is_fin_msg(char* message)
 			return 1;
 		}
 	}
+	return 0;
+}
+
+/* Check if the message is an ip ctrl msg
+	and store just the ip in the same string,
+	without the flag
+*/
+
+int is_ctrl(char* message, int ctrl) {
+	char deserial[MAX];
+	strcpy(deserial, message);
+
+	char* type = strtok(deserial, "-");
+	if (atoi(type) == ctrl) {
+		printf("Am primit ip de la server\n");
+		type = strtok(NULL, "-");
+		strcpy(message, type);
+		return 1;
+	}	
 	return 0;
 }
 
@@ -90,40 +111,128 @@ int is_file_msg(char* message)
 
 }
 
-void serial_msg(char* msg, char* buffer, int type) {
+void serial_msg(char* msg, char* buffer, int type)
+{
 	// memcpy(buffer, &cli_info->port, sizeof(int));
 	// memcpy(buffer + sizeof(int), cli_info->IP, strlen(cli_info->IP) + 1);
 	sprintf(buffer, "%d-%s", type, msg);
 }
 
-void get_content(char* source, char* dest) {
+void get_content(char* source, char* dest)
+{
 	char deserial[MAX];
 	strcpy(deserial, source);
-	printf("aiciiiiiiiiiiiiii\n");
+	// printf("aiciiiiiiiiiiiiii\n");
 	char* type = strtok(deserial, "-");
 
-	printf("========>before strtok %s\n", type);
+	// printf("========>before strtok %s\n", type);
 	// printf("helpers.c l53||| type=%s\n", type);
  	type = strtok(NULL, "-");
-	printf("========>after strtok %s\n", type);
+	// printf("========>after strtok %s\n", type);
  	
  	strcpy(dest, type);
 }
 
+void parse_ip_port(char* buff, cli_info_t* cli_info)
+{
+	char deserial[MAX];
+	strcpy(deserial, buff);
+	// printf("aiciiiiiiiiiiiiii\n");
+	char* type = strtok(deserial, "-");
 
-FILE* file_exists(char* file_name) {
+	// printf("========>before strtok %s\n", type);
+	printf("Parsez IP+PORT \n");
+ 	type = strtok(NULL, "-");
+ 	strcpy(cli_info->IP, type);
+ 	printf("IP = %s\n", cli_info->IP);
+	// printf("========>after strtok %s\n", type);
+ 	
+  	type = strtok(NULL, "-");
+ 	printf("PORT=%d\n", atoi(type));
+ 	cli_info->port = atoi(type);
+}
+
+int get_files_nb(char* buff)
+{
+	char deserial[MAX];
+	strcpy(deserial, buff);
+	char* type = strtok(deserial, "-");
+
+ 	type = strtok(NULL, "-");
+
+ 	printf("Received nb_files = %d\n", atoi(type));
+ 	return atoi(type);	
+}
+
+int choose_files_nb()
+{
+	char buffer[MAX];
+	int nb_files = 0;
+
+	printf("Introduce the NUMBER of files: to cancel, type: 'C' ______\n\n----->");
+	while (1) {
+		fgets(buffer, MAX, stdin);
+
+		if (strcmp(buffer, "C\n") == 0) {
+			printf("Transfer canceled\n");
+			return 0;
+		}
+		nb_files = atoi(buffer);
+
+		if (nb_files) {
+			return nb_files;
+		}
+		else
+		{
+			printf("Invalid number of files, type again\n");
+		}
+	}
+	return 0;
+}
+
+FILE* file_exists(char* file_name)
+{
 	char* path_file = (char*)malloc(sizeof(SEND_DIR) + strlen(file_name));
+	CHECK(path_file == NULL, "Fail to alloc memory");
+
 	sprintf(path_file, "%s%s", SEND_DIR, file_name);
 
 	/* Test if the file exists in the directory */
 	FILE* fp = fopen(path_file, "r");
 	if (fp == NULL) {
 		// printf("len |%s| nume %d\n", file_name, strlen(file_name));
-		printf("______ File %s does not exist ______\n", file_name);
+		printf("______ File '%s' does not exist ______\n", file_name);
 		return NULL;
 	}
+	free(path_file);
 	return fp;
 }
+
+int choose_files(int nb_files, param_send_t* f_details)
+{
+	char buffer[MAX];
+	FILE *fp;
+	int i = 0;
+
+	while (i < nb_files) {
+		fgets(buffer, MAX, stdin);
+		if (strcmp(buffer, "C\n") == 0) {
+			printf("Transfer canceled\n");
+			return 0;
+		}
+		buffer[strlen(buffer) - 1] = '\0';
+		fp = file_exists(buffer);
+		if (fp == NULL) {
+			continue;
+		}
+		f_details[i].other = fp;
+		strcpy(f_details[i].file_name, buffer);
+
+		++i;
+	}
+	return 1;
+}
+
 
 
 // int file_exist (char *file_name)
@@ -157,6 +266,7 @@ void list_dir()
 		perror ("Error opening the directory");
 	}
 }
+
 
 
 /*
