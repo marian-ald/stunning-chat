@@ -15,8 +15,6 @@ pthread_t threads[2];
 
 
 void serial_cli_info(cli_info_t *cli_info, char* buffer, int type) {
-	// memcpy(buffer, &cli_info->port, sizeof(int));
-	// memcpy(buffer + sizeof(int), cli_info->IP, strlen(cli_info->IP) + 1);
 	sprintf(buffer, "%d%d\n%s", type, cli_info->port, cli_info->IP);
 }
 
@@ -82,20 +80,20 @@ int main(int argc, char* argv[])
 		printf("Args: parameter for server's port is missing\n");	
 		exit(0);
 	}
-	// Open the server's socket on which it accepts connections
-	// from clients  
+	/* 	Open the server's socket on which it accepts connections
+		from clients   */
 	sockfd = socket(AF_INET, SOCK_STREAM, 0); 
 	CHECK(sockfd <= 0,"Fail creating client socket\n");
 
 	bzero(&serv_addr, sizeof(serv_addr)); 
 
-	// Set server's details: IPV4, address, port
+	/* Set server's details: IPV4, address, port */
 	serv_addr.sin_family = AF_INET; 
 	serv_addr.sin_addr.s_addr = htonl(INADDR_ANY); 
 	serv_addr.sin_port = htons(atoi(argv[1])); 
 	bzero(&(serv_addr.sin_zero),8); 
 
-	// Associate a port to the server's socket
+	/* Associate a port to the server's socket */
 	return_val = bind(sockfd, (struct sockaddr*)&serv_addr, sizeof(struct sockaddr));
 	CHECK(return_val < 0, "Failed to bind");
 
@@ -106,12 +104,12 @@ int main(int argc, char* argv[])
 		printf("Server listening..\n"); 
 	}
 
-	// Allocate space for the 2 file descriptors
+	/* Allocate space for the 2 file descriptors*/
 	fd_client = (int *)malloc(2 * sizeof(int));
 	CHECK(fd_client == NULL, "Malloc failed");
 
-	// Allocate space for the argument structure needed by pthread_create
-	// arg_thread = (arg_thread_t *)malloc(2 * sizeof(arg_thread_t));
+	/* Allocate space for the argument structure needed by pthread_create
+	 arg_thread = (arg_thread_t *)malloc(2 * sizeof(arg_thread_t)); */
 	arg_thread = malloc(NB_CLIENTS * sizeof(arg_thread_t));
 	CHECK(arg_thread == NULL, "Malloc failed");
 
@@ -123,7 +121,7 @@ int main(int argc, char* argv[])
 	len_cli = sizeof(struct sockaddr_in);
 	while (1)
 	{
-		// The server waits the connection of 2 clients
+		/* The server waits the connection of 2 clients */
 		for (int i = 0; i < NB_CLIENTS; ++i)
 		{
 			fd_client[i] = accept(sockfd, (struct sockaddr*)&cli, &len_cli);
@@ -184,11 +182,11 @@ int main(int argc, char* argv[])
 		printf("Clients 1&2 have stopped, waiting for others...\n\n");
 	}
 
-	// Free allocated memory
+	/* Free allocated memory*/
     free(fd_client);
     free(arg_thread);
 
-	// Close the server's socket for accepting clients
+	/* Close the server's socket for accepting clients*/
 	return_val = close(sockfd);
 	CHECK(return_val < 0, "Error closing socket");
 } 

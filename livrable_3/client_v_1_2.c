@@ -210,7 +210,6 @@ void *receive_msg(void* fd)
 			files_nb = get_files_nb(buffer);
 
 			recv_threads = (pthread_t *)realloc(recv_threads, (files_nb + 1) * sizeof(pthread_t));
-			CHECK(recv_threads == NULL, "Fail to realloc");
 
 			return_val = pthread_create(&recv_threads[0], 0, receive_msg, fd);
 			CHECK(return_val != 0, "Failed to create thread");
@@ -304,7 +303,7 @@ void* recv_file(void* thread_nb)
 	struct sockaddr_in servaddr; 
 
 	sockfd = socket(AF_INET, SOCK_STREAM, 0);
-	CHECK(sockfd < 0,"Fail creating client socket\n");
+	CHECK(sockfd <= 0,"Fail creating client socket\n");
 
 	bzero(&servaddr, sizeof(servaddr)); 
 
@@ -364,7 +363,6 @@ int main(int argc, char* argv[])
 	int return_val;
 	struct sockaddr_in servaddr; 
 	send_threads = (pthread_t *)calloc(2, sizeof(pthread_t));
-	CHECK(send_threads == NULL, "Fail to alloc memory");
 
 	if (argc < 3)
 	{
@@ -373,7 +371,6 @@ int main(int argc, char* argv[])
 	}
 
 	sem_init(&sem_IP, 0, 0);
-	CHECK(return_val != 0, "Fail to init the semaphore");
 
 	sockfd = socket(AF_INET, SOCK_STREAM, 0);
 	if (sockfd != -1)
@@ -404,6 +401,7 @@ int main(int argc, char* argv[])
 		- one to receive messages
 		- one to send messages
 	*/
+	// create_main_threads(&sockfd);
 	return_val = pthread_create(&send_threads[0], 0, send_msg, (void *)&sockfd);
 	CHECK(return_val != 0, "Failed to create thread");
 
@@ -416,8 +414,7 @@ int main(int argc, char* argv[])
 		CHECK(return_val != 0, "Failed to join thread");
 	}
 
-	return_val = sem_destroy(&sem_IP); 
-	CHECK(return_val != 0, "Fail to destroy the semaphore");
+	sem_destroy(&sem_IP); 
 
 	return_val = close(sockfd);
 	CHECK(return_val != 0, "Fail closing socket");
