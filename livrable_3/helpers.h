@@ -3,16 +3,17 @@
 
 #define NB_CLIENTS 2
 #define PORT_FILE 8888
+#define NB_WAIT_SEC 0
 
 // Maximum length of the message
 #define MAX 80 
 #define RCV_DIR "recv/"
 #define SEND_DIR "send/"
 
-// fin, msg text
-#define TXT_MSG 1
+
+#define TXT_MSG 1	// fin, msg text
 #define TXT_FIS 2
-#define CTRL_IP 3 // IP
+#define CTRL_IP 3 	// IP
 #define CTRL_FILE 4
 #define CTRL_P_IP 5 // Port+IP
 
@@ -43,6 +44,7 @@ typedef struct arg_thread_t {
 typedef struct param_send {
 	int fd;
 	char file_name[MAX];
+	int thread_nb;
 	void *other;
 } param_send_t;
 
@@ -53,11 +55,6 @@ typedef struct msg {
 	int type;
 } msg_t;
 
-
-
-/*
-	type = 1: Control message port/ip
-*/
 
 FILE* file_exists(char* file_name);
 

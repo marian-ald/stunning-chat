@@ -11,7 +11,7 @@
 
 #include "helpers.h"
 
-
+/* Return the size of a file */
 int fsize(FILE *fp){
     int prev, size;
 
@@ -22,36 +22,33 @@ int fsize(FILE *fp){
     return size;
 }
 
+/* Send a message and check return value*/
 void send_chunk(char* buffer, int fd)
 {
 	int return_val = send(fd, buffer, MAX, 0);
-	printf("Client trimite: %s\n", buffer);
 	CHECK(return_val < 0, "Client fails sending message to server");
 }
 
+/* Receive a message and check return value*/
 int recv_chunk(char* buffer, int fd)
 {
 	bzero(buffer, MAX); 
 	int return_val = recv(fd, buffer, MAX, 0);
-	printf("Client primeste:%s\n", buffer);
 	CHECK(return_val < 0, "Client fails recv message from the server");
 
 	return strlen(buffer);
 }
 
-
+/* Check if a message is 'fin' */
 int is_fin_msg(char* message)
 {
 	char deserial[MAX];
 	strcpy(deserial, message);
 	char* type = strtok(deserial, "-");
 
-	// printf("========> %s\n", type);
 	if (strncmp(type, "1", 1) == 0)
 	{
-		// printf("helpers.c l53||| type=%s\n", type);
 	 	type = strtok(NULL, "-");
-	 	// printf("after strtok type=|%s|___len=%d\n", type, strlen(type));
 		if (strcmp(type, "fin\n") == 0)
 		{	
 			printf("Bye. Client has closed.\n");
@@ -61,18 +58,15 @@ int is_fin_msg(char* message)
 	return 0;
 }
 
-/* Check if the message is an ip ctrl msg
-	and store just the ip in the same string,
-	without the flag
+/* Check if the message is an ip ctrl msg and store just the ip
+in the same string,	without the flag
 */
-
 int is_ctrl(char* message, int ctrl) {
 	char deserial[MAX];
 	strcpy(deserial, message);
 
 	char* type = strtok(deserial, "-");
 	if (atoi(type) == ctrl) {
-		printf("Am primit ip de la server\n");
 		type = strtok(NULL, "-");
 		strcpy(message, type);
 		return 1;
@@ -80,75 +74,52 @@ int is_ctrl(char* message, int ctrl) {
 	return 0;
 }
 
+/* Check if a message is 'file' */
 int is_file_msg(char* message)
 {
 	char deserial[MAX];
 	strcpy(deserial, message);
 	char* type = strtok(deserial, "-");
 
-	// printf("========> %s\n", type);
 	if (strncmp(type, "4", 1) == 0)
 	{
-		// printf("helpers.c l53||| type=%s\n", type);
 	 	type = strtok(NULL, "-");
-	 	// printf("after strtok type=|%s|___len=%d\n", type, strlen(type));
 		if (strcmp(type, "file\n") == 0)
 		{	
-			printf("File recv.\n");
+			printf("_____File recv_____\n");
 			return 1;
 		}
 	}
 	return 0;
-
-
-	// //strncmp(message, "file", 4) == 0 ? return 1 : return 0
-	// if (strncmp(message, "file", 4) == 0)
-	// {
-	// 	// printf("Trebuie sa trimit un fisier\n");
-	// 	return 1;
-	// }
-	// return 0;
-
 }
 
 void serial_msg(char* msg, char* buffer, int type)
 {
-	// memcpy(buffer, &cli_info->port, sizeof(int));
-	// memcpy(buffer + sizeof(int), cli_info->IP, strlen(cli_info->IP) + 1);
 	sprintf(buffer, "%d-%s", type, msg);
 }
 
+/* Parse and return the content of a message */
 void get_content(char* source, char* dest)
 {
 	char deserial[MAX];
 	strcpy(deserial, source);
-	// printf("aiciiiiiiiiiiiiii\n");
 	char* type = strtok(deserial, "-");
 
-	// printf("========>before strtok %s\n", type);
-	// printf("helpers.c l53||| type=%s\n", type);
- 	type = strtok(NULL, "-");
-	// printf("========>after strtok %s\n", type);
- 	
+ 	type = strtok(NULL, "-"); 	
  	strcpy(dest, type);
 }
 
+/* Parse the message to extract the IP and the PORT */
 void parse_ip_port(char* buff, cli_info_t* cli_info)
 {
 	char deserial[MAX];
 	strcpy(deserial, buff);
-	// printf("aiciiiiiiiiiiiiii\n");
 	char* type = strtok(deserial, "-");
 
-	// printf("========>before strtok %s\n", type);
-	printf("Parsez IP+PORT \n");
  	type = strtok(NULL, "-");
  	strcpy(cli_info->IP, type);
- 	printf("IP = %s\n", cli_info->IP);
-	// printf("========>after strtok %s\n", type);
  	
   	type = strtok(NULL, "-");
- 	printf("PORT=%d\n", atoi(type));
  	cli_info->port = atoi(type);
 }
 
@@ -160,7 +131,7 @@ int get_files_nb(char* buff)
 
  	type = strtok(NULL, "-");
 
- 	printf("Received nb_files = %d\n", atoi(type));
+ 	printf("_____Received nb_files = %d_____\n", atoi(type));
  	return atoi(type);	
 }
 
@@ -190,6 +161,8 @@ int choose_files_nb()
 	return 0;
 }
 
+/* Check if a file exists. If yes, open it an return the file
+pointer, else return NULL */
 FILE* file_exists(char* file_name)
 {
 	char* path_file = (char*)malloc(sizeof(SEND_DIR) + strlen(file_name));
@@ -200,7 +173,6 @@ FILE* file_exists(char* file_name)
 	/* Test if the file exists in the directory */
 	FILE* fp = fopen(path_file, "r");
 	if (fp == NULL) {
-		// printf("len |%s| nume %d\n", file_name, strlen(file_name));
 		printf("______ File '%s' does not exist ______\n", file_name);
 		return NULL;
 	}
@@ -208,6 +180,7 @@ FILE* file_exists(char* file_name)
 	return fp;
 }
 
+/* Read from stdin the files to be sent */
 int choose_files(int nb_files, param_send_t* f_details)
 {
 	char buffer[MAX];
@@ -233,17 +206,7 @@ int choose_files(int nb_files, param_send_t* f_details)
 	return 1;
 }
 
-
-
-// int file_exist (char *file_name)
-// {
-// 	struct stat buffer;
-// 	char* path_file = (char *)malloc(sizeof(RCV_DIR) + strlen(file_name));
-// 	sprintf(path_file, "%s%s", RCV_DIR, file_name);
-// 	// printf("testez daca exista fis: %s\n", path_file);
-// 	return (stat (path_file, &buffer) == 0);
-// }
-
+/* List the files from the sending directory */
 void list_dir()
 {
 	DIR *dp;
@@ -251,7 +214,7 @@ void list_dir()
 	dp = opendir (SEND_DIR);
 	if (dp != NULL)
 	{
-		printf("______ Choose a file to send from: ______\n");
+		printf("______ Send directory: ______\n");
 		while ((ep = readdir (dp)))
 		{
 			if(strcmp(ep->d_name,".")!=0 && strcmp(ep->d_name,"..")!=0) {
@@ -266,26 +229,3 @@ void list_dir()
 		perror ("Error opening the directory");
 	}
 }
-
-
-
-/*
-Create 2 threads:
-	- the first thread reads from keyboard and sends to server->client 2
-	- the second thread receives from client 2 and sends to server->client 1
-*/
-// void create_main_threads(int* sockfd) {
-// 	int return_val = pthread_create(&threads[0], 0, send_msg, (void *)sockfd);
-// 	CHECK(return_val != 0, "Failed to create thread");
-
-// 	return_val = pthread_create(&threads[1], 0, receive_msg, (void *)sockfd);
-// 	CHECK(return_val != 0, "Failed to create thread");
-// }
-
-// void join_main_threads() {
-// 	for (int i = 0; i < 2; ++i)
-// 	{
-// 		int return_val = pthread_join(threads[i], 0);
-// 		CHECK(return_val != 0, "Failed to join thread");
-// 	}
-// }

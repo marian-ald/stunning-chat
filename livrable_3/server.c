@@ -11,7 +11,6 @@
 
 #include "helpers.h"
 
-
 pthread_t threads[2];
 
 
@@ -23,7 +22,6 @@ void serial_cli_info(cli_info_t *cli_info, char* buffer, int type) {
 
 
 /* 	The function receives a mesage from a client and send it to the other
-
 	The thread with thread_nb = 0:
 		recv from socket 0
 		send to socket 1
@@ -37,41 +35,30 @@ void* recv_send(void *arg_thread)
 	int write_to = thread_info->thread_nb;
 	int return_val;
 	char buffer[MAX];
-	// char buff_ser[MAX];
 
 	while (1) {
 		return_val = recv(fd_client_int[write_to], buffer, MAX, 0);
 		CHECK(return_val < 0, "Server fails receiving message from client");
 
-		printf("Serv primeste:%s|\n", buffer);
-
-		// serial_msg(buffer, buff_ser, TXT_MSG);
 		return_val = send(fd_client_int[1 - write_to], buffer, MAX, 0); 
 		CHECK(return_val < 0, "Server fails sending message to client");
 
 		if (is_file_msg(buffer))
 		{
-			printf("intru S is file\n");
 			/* Send the IP/port to the source client */
-
-			// serial_cli_info(&thread_info->cli_info, buffer, CTRL_PIP);
 			serial_msg(thread_info->cli_info.IP, buffer, CTRL_IP);
 
 			return_val = send(fd_client_int[write_to], buffer, MAX, 0); 
 			CHECK(return_val < 0, "Server fails sending message to client");
 			
-			printf("Server trimite %s\n", buffer);
-			// printf("Serializare: %s\n", buffer);
 			continue;
 		}
 
 		if (is_fin_msg(buffer))
 		{
-            printf("Server primeste fin\n");
             pthread_cancel(threads[1 - write_to]);
 			break;
 		}
-		// sleep(1);
 	}
 	return 0;
 }
@@ -98,6 +85,7 @@ int main(int argc, char* argv[])
 	// Open the server's socket on which it accepts connections
 	// from clients  
 	sockfd = socket(AF_INET, SOCK_STREAM, 0); 
+	CHECK(sockfd <= 0,"Fail creating client socket\n");
 
 	bzero(&serv_addr, sizeof(serv_addr)); 
 
@@ -139,19 +127,13 @@ int main(int argc, char* argv[])
 		for (int i = 0; i < NB_CLIENTS; ++i)
 		{
 			fd_client[i] = accept(sockfd, (struct sockaddr*)&cli, &len_cli);
-			sleep(1);
-			printf("%d\n", cli);
-			// printf("L’adresse IP du client est : %s\n", (&cli)->sin_addr);
 
-			// printf("\nREQUEST FROM %s PORT %d \n", inet_ntop(AF_INET, &cli.sin_addr, str , sizeof(str)), cli.sin_port);
-	    	printf("\n I got a connection from (%s , %d)", inet_ntoa(cli.sin_addr),ntohs(cli.sin_port));
+	    	printf("\nServer got a connection from (%s , %d)\n", inet_ntoa(cli.sin_addr),ntohs(cli.sin_port));
 
 	    	cli_info[i].port = ntohs(cli.sin_port);
 			strcpy(cli_info[i].IP, inet_ntoa(cli.sin_addr));
 			arg_thread[i].cli_info = cli_info[0];
 
-			// printf("Son numéro de port est : %d\n", (int) ntohs(cli.sin_port));
-			// printf("sssssssssssssssssssssssssssss\n");
 			if (fd_client[i] < 0)
 			{ 
 				printf("Server fails accepting client_%d\n", i + 1); 
@@ -160,21 +142,16 @@ int main(int argc, char* argv[])
 				printf("Server acccepts client_%d\n", i + 1);	
 		  	}
 		  	if (i == 0) {
-				// Send hello message to client1
+				/* Send hello message to client1 */
 				sprintf(buffer, "%d-Hello, client! Please wait for the other client to connect\n", TXT_MSG); 
 				return_val = send(fd_client[i], buffer, strlen(buffer), 0); 
 				CHECK(return_val < 0, "Server fails sending hello message to client");
 			}
 		}
 
-		for (int i = 0; i < 2; ++i)
-		{
-			printf("%d |||  %s\n", cli_info[i].port, cli_info[i].IP);
-		}
-
 		for (int i = 0; i < NB_CLIENTS; ++i)
 		{
-			// Notify clients that they can start chatting
+			/* Notify clients that they can start chatting */
 			sprintf(buffer, "%d-START_CHAT\n", TXT_MSG); 
 			return_val = send(fd_client[i], buffer, strlen(buffer), 0); 
 			CHECK(return_val < 0, "Server fails sending start_chat");
