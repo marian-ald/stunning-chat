@@ -57,23 +57,23 @@ void *send_msg(void* fd)
 		fgets(buffer, MAX, stdin);
 		printf("\n");
 
-		if (strcmp(buffer, "cmd\n") == 0)
+		if (strcmp(buffer, "\\cmd\n") == 0)
 		{
 			print_commands();
 			continue;
 		}
-		if (strcmp(buffer, "list\n") == 0)
+		if (strcmp(buffer, "\\list\n") == 0)
 		{
 			buffer[strlen(buffer) - 1] = '\0';
 		}
-		else if (strcmp(buffer, "join\n") == 0)
+		else if (strcmp(buffer, "\\join\n") == 0)
 		{
 			printf("Introduce channel's name:");
 			fgets(channel, MAX, stdin);
 			channel[strlen(channel) - 1] = '\0';
 			sprintf(buffer, "join-%s", channel);
 		}
-		else if (strcmp(buffer, "exit\n") == 0)
+		else if (strcmp(buffer, "\\exit\n") == 0)
 		{
 			// if (!in_channel)
 			// {
@@ -116,10 +116,17 @@ void *receive_msg(void* fd)
 		printf("Server: ");
 		puts(buffer);
 
+		if (strncmp(buffer, "list", 4) == 0)
+		{
+			print_commands();
+			continue;
+		}
+/*
 		if (CHECK_fin_message(buffer)) {
 			pthread_cancel(threads[0]);
 			break;
 		}
+*/
 	}
 	return 0;
 }

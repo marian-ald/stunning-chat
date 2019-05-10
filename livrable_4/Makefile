@@ -20,7 +20,7 @@ client: client.c
 
 # Run the server
 run_server:
-	./server ${PORT}
+	./server ${PORT} 3 3
 
 # Run the client 	
 run_client:

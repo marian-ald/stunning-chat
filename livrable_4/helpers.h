@@ -28,7 +28,7 @@ typedef struct client_info
 	int thread_nb;
 } client_info_t;
 
-
+/*
 typedef struct clients_array
 {
 	client_info_t* array;
@@ -36,6 +36,7 @@ typedef struct clients_array
 	int pos;
 	int start_pos;
 } client_array_t;
+*/
 
 typedef struct crt_client
 {
@@ -48,6 +49,13 @@ typedef struct body_msg_t
 	char type[10];
 	char body[MAX];
 } body_msg_t;
+
+typedef struct channel_t
+{
+	int id;
+	char* c_name;
+	char* descr;
+} channel_t;
 
 void parse_msg(char* raw_msg, body_msg_t* msg);
 

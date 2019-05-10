@@ -19,6 +19,7 @@ char channels[CHAN_NB][MAX] = {
 	"got - \"the best series\""};
 
 
+
 void* recv_send(void* cli)
 {
 
@@ -108,14 +109,14 @@ int main(int argc, char* argv[])
 	int i, return_val;
 	struct sockaddr_in servaddr, cli;
 	int nb_clients = 2;
-	client_array_t *client_array;
+	//client_array_t *client_array;
 	list_t* clients = (list_t *)malloc(sizeof(list_t));
 
 	int join_is_done = -1;
 
-	if (argc < 2)
+	if (argc < 4)
 	{
-		printf("Args: server's port\n");	
+		printf("Args: port, nb chaines, nb_clients/chaine\n");	
 		exit(0);
 	}
 
@@ -159,19 +160,17 @@ int main(int argc, char* argv[])
 		// {
 		// 	/* Send a hello message to clients after their connection */
 		int fd_client = accept(sockfd, (struct sockaddr*)&cli, &len_cli);
-printf("1\n");
+
 		add_first(clients, 0, fd_client);
-printf("2\n");
 		sprintf(buffer, "Hello, client! You are connected to the server\n");
-printf("3\n");
-		int return_val = send(fd_client, buffer, strlen(buffer), 0); 
-printf("4\n");		
+		int return_val = send(fd_client, buffer, strlen(buffer), 0); 	
 		CHECK(return_val < 0, "Server fails sending hello message to client");
-if (clients == NULL) {
-	printf("goooool\n");
-}
+		
+		if (clients == NULL) {
+			printf("goooool\n");
+		}
+
 		return_val = pthread_create(&(clients->first->thread), 0, recv_send, (void *)clients->first);
-printf("5\n");
 		CHECK(return_val != 0, "Fail to create thread");
 
 		// if (join_is_done) {
