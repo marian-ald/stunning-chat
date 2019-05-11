@@ -12,13 +12,77 @@
 #include "helpers.h"
 #include "linked_list.h"
 
-char channels[CHAN_NB][MAX] = {
-	"Dota2 - \"Dota2 players\"",
-	"LOL - \"LOL players\"",
-	"animals - \"Nat Geo Wild rocks\"",
-	"got - \"the best series\""};
+// char channels[CHAN_NB][MAX] = {
+// 	"Dota2 - \"Dota2 players\"",
+// 	"LOL - \"LOL players\"",
+// 	"animals - \"Nat Geo Wild rocks\"",
+// 	"got - \"the best series\""};
 
+channel_t *channels;
+int nb_channels, nb_clients;
 
+void init_channels(int n)
+{
+	channels = (channel_t*)malloc(n * sizeof(channel_t));
+	CHECK(channels == NULL, "Fail to alloc memory");
+
+	for (int i = 0; i < n; ++i)
+	{
+		channels[i].id = i;
+		channels[i].nb_clients = 0;
+		sem_init(&channels[i].mutex, 0, 1);
+		channels[i].c_name = NULL;
+		channels[i].c_descr = NULL;
+	}
+}
+
+int channels_dim(int n) {
+	int dim = 0;
+	char buffer[MAX];
+
+	for (int i = 0; i < n; ++i)
+	{
+		sprintf(buffer, "%d", channels[i].id);
+		printf("dim id%d = %d\n", i,  strlen(buffer));
+		dim += strlen(buffer);
+		if (channels[i].c_name != NULL)
+		{
+			dim += strlen(channels[i].c_name);
+			dim += strlen(channels[i].c_descr);
+		}
+	}
+	return dim;
+}
+
+// int find_pos()
+// {
+
+// }
+
+/* If client */
+void add_cli_to_channel(l_node* list_cli, int channel_id, int cli_id, char* buf)
+{
+	l_node* client = find(list_cli, cli_id);
+	if (client == NULL)
+	{
+		printf("Client nod found\n");
+	}
+	else
+	{
+		printf("client has id = %d\n", client->key);
+		if (client->channel_id != -1)
+		{
+			sprintf(buf, "You are in channel %d. Please exit first.\n",
+				client->channel_id);
+		}
+		else
+		{
+			sprintf(buf, "Welcome to channel %d\n", channel_id);
+			client->channel_id = channel_id;
+			channels[channel_id].nb_clients++;
+		}
+	}
+}
 
 void* recv_send(void* cli)
 {
@@ -28,7 +92,7 @@ void* recv_send(void* cli)
 	l_node* client = (l_node*)cli;
 	char recv_buf[MAX];
 	char send_buf[MAX];
-	int return_val;
+	int return_val, i;
 	int fd_client = client->fd;
 	body_msg_t msg;
 
@@ -48,70 +112,77 @@ void* recv_send(void* cli)
 
 		printf("Recv from client: %s\n", recv_buf);
 
-		if (strcmp(recv_buf, "list") == 0)
+		if (strcmp(recv_buf, "\\list") == 0)
 		{
-			sprintf(send_buf, "list-%d", CHAN_NB);
 
+			// printf("dim canale %d\n", channels_dim(nb_channels));
+			// int c_dim = channels_dim(nb_channels) + 3 * nb_channels; // "1-name-descr-...." 3x'-' + dimens
+
+			char blank[1] = "";
+
+			sprintf(send_buf, "Channels list:\n");
 			return_val = send(fd_client, send_buf, MAX, 0);
 			CHECK(return_val < 0, "Server fails sending message to client");
 
-			for (int i = 0; i < CHAN_NB; ++i)
+			for (i = 0; i < nb_channels; ++i)
 			{
-				sprintf(send_buf, "%s", channels[i]);
+				if (channels[i].c_name == NULL)
+				{
+					sprintf(send_buf, "id=%d  name=\"\" descr:\"\"\n", channels[i].id);
+				}
+				else
+				{
+					sprintf(send_buf, "id=%d  name=%s   descr: %s\n", channels[i].id, channels[i].c_name, channels[i].c_descr);
+				}
+			
 				return_val = send(fd_client, send_buf, MAX, 0);
 				CHECK(return_val < 0, "Server fails sending message to client");
+
 			}
+
 			continue;
 		}
 		if (strncmp(recv_buf, "join", 4) == 0)
 		{
 			parse_msg(recv_buf, &msg);
+			int channel_id = atoi(msg.body);
+			printf("Client vrea in channel %d\n", channel_id);
+
+			if (channel_id >= nb_channels)
+			{	
+				sprintf(send_buf, "%d is not a valid channel id\n", channel_id);
+			}
+			sem_wait(&channels[channel_id].mutex);
+			if (channels[channel_id].nb_clients == nb_clients)
+			{
+				sprintf(send_buf, "Channel %d is already full\n", channel_id);
+			}
+			else
+			{
+				add_cli_to_channel(client, channel_id, client->key, send_buf);
+			}
+			sem_post(&channels[channel_id].mutex);
+
+			return_val = send(fd_client, send_buf, MAX, 0);
+			CHECK(return_val < 0, "Server fails sending message to client");
 
 		}
 
-		// /* Send the message to the other clients */
-		// for (int i = 0; i < c_array->pos; ++i)
-		// {
-		// 	if (c_array->array[i].thread_nb != id) {
-		// 		return_val = pthread_mutex_lock(&lock);
-		// 		CHECK(return_val < 0, "Fail locking the mutex");
-
-				// return_val = send(c_array->array[i].fd, buffer, MAX, 0);
-				// CHECK(return_val < 0, "Server fails sending message to client");
-
-		// 		return_val = pthread_mutex_unlock(&lock);  
-		// 		CHECK(return_val < 0, "Fail unlocking the mutex");
-		// 	}
-		// }
-
-		// if (strncmp(buffer, "fin", 3) == 0)
-		// {
-		// 	/* Stop the threads after receiving 'fin' message */
-		// 	for (int i = 0; i < c_array->pos; ++i)
-		// 	{
-		// 		if (c_array->array[i].thread_nb != id)
-		// 		{
-  //           		pthread_cancel(c_array->array[i].thread);
-  //           		CHECK(return_val < 0, "Fail canceling thread");
-  //           	}
-  //           }
-		// 	break;
-		// }
 	}
 	return 0;
 }
+
 
 int main(int argc, char* argv[]) 
 {
 	char buffer[MAX];
 	int sockfd;
 	socklen_t len_cli;
-	int i, return_val;
+	int i = 0, return_val;
 	struct sockaddr_in servaddr, cli;
-	int nb_clients = 2;
-	//client_array_t *client_array;
-	list_t* clients = (list_t *)malloc(sizeof(list_t));
 
+	//client_array_t *client_array;
+	l_node* clients = NULL;
 	int join_is_done = -1;
 
 	if (argc < 4)
@@ -119,7 +190,12 @@ int main(int argc, char* argv[])
 		printf("Args: port, nb chaines, nb_clients/chaine\n");	
 		exit(0);
 	}
+	nb_channels = atoi(argv[2]);
+	nb_clients = atoi(argv[3]);
+	printf("nb_channels = %d\n", nb_channels);
 
+
+	init_channels(nb_channels);
 
 	// Open the server's socket on which it accepts connections
 	// from clients  
@@ -147,55 +223,29 @@ int main(int argc, char* argv[])
 	/* 	Allocate memory for  the structure which contains the information
 		about clients
 	*/
-	// client_array = (client_array_t*)malloc(sizeof(client_array_t));
-	// CHECK(client_array == NULL, "Fail allocating memory");
+
 
 	while (1)
 	{
-		// client_array = init_array(client_array);
-		// printf("\nWaiting for %d clients to connect\n", nb_clients);
 
-		// /* Wait for nb_clients to connect to the server */
-		// for (i = 0; i < nb_clients; ++i)
-		// {
-		// 	/* Send a hello message to clients after their connection */
+		/* Send a hello message to clients after their connection */
 		int fd_client = accept(sockfd, (struct sockaddr*)&cli, &len_cli);
 
-		add_first(clients, 0, fd_client);
+		clients = add_first(clients, 0, fd_client);
+		clients->key = i;
+		clients->channel_id = -1;
+		++i;
 		sprintf(buffer, "Hello, client! You are connected to the server\n");
 		int return_val = send(fd_client, buffer, strlen(buffer), 0); 	
 		CHECK(return_val < 0, "Server fails sending hello message to client");
 		
 		if (clients == NULL) {
-			printf("goooool\n");
+			printf("noooool\n");
 		}
 
-		return_val = pthread_create(&(clients->first->thread), 0, recv_send, (void *)clients->first);
+		return_val = pthread_create(&(clients->thread), 0, recv_send, (void *)clients);
 		CHECK(return_val != 0, "Fail to create thread");
 
-		// if (join_is_done) {
-		// 	if (join_is_done == 1) {
-		// 		// join() de tid
-		// 	}
-		// }
-		// 	printf("Accepted client %d from %d\n", i + 1, nb_clients);
-
-		// 	/* Add information for a client in the array */
-		// 	add_client(client_array, fd_client);
-
-		// }
-		// /* Send start_chat to each client */
-		// for (int i = 0; i < nb_clients; ++i)
-		// {
-		// 	/* Create a thread for each client */
-		// 	start_client(client_array, i);
-		// }
-
-		// /* Close the thread and the socket for each client connected to the server */
-		// finish_clients(client_array);
-
-		// /* Free allocated memory for the array of clients */
-		// deinit_array(client_array);
 
 
 	}

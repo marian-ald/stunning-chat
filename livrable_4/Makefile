@@ -8,6 +8,8 @@ PORT = 8080
 # Server's IP
 IP_SERVER = 127.0.0.1
 
+NB_CHANNELS = 3
+NB_CLI = 3
 all: client server
 
 # Compile server.c
@@ -20,7 +22,7 @@ client: client.c
 
 # Run the server
 run_server:
-	./server ${PORT} 3 3
+	./server ${PORT} ${NB_CHANNELS} ${NB_CLI}
 
 # Run the client 	
 run_client:

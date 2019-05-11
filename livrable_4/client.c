@@ -68,7 +68,7 @@ void *send_msg(void* fd)
 		}
 		else if (strcmp(buffer, "\\join\n") == 0)
 		{
-			printf("Introduce channel's name:");
+			printf("Introduce channel's id:");
 			fgets(channel, MAX, stdin);
 			channel[strlen(channel) - 1] = '\0';
 			sprintf(buffer, "join-%s", channel);
@@ -113,12 +113,12 @@ void *receive_msg(void* fd)
 	while (1) {
 		return_val = recv(*fd_server, buffer, MAX, 0); 
 		CHECK(return_val < 0, "Client fails receiving message from server");
-		printf("Server: ");
+		// printf("Server: ");
 		puts(buffer);
 
 		if (strncmp(buffer, "list", 4) == 0)
 		{
-			print_commands();
+			// print_commands();
 			continue;
 		}
 /*

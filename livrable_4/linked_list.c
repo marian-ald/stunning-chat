@@ -9,8 +9,8 @@
 
 
 //display the list
-void print_list(list_t *list) {
-   l_node* head = list->first;
+void print_list(l_node* head) {
+   // l_node* head = list->first;
 
    l_node *ptr = head;
    printf("\n[ ");
@@ -24,46 +24,46 @@ void print_list(list_t *list) {
    printf(" ]");
 }
 
-//insert link at the first location
-void add_first(list_t* list, int key, int fd) {
+//insert new at the first location
+l_node* add_first(l_node* head, int key, int fd) {
    // l_node* head = list->first;
 
-   //create a link
-   l_node *link = (l_node*) malloc(sizeof(l_node));
+   //create a new
+   l_node *new = (l_node*) malloc(sizeof(l_node));
 	
-   link->key = key;
-   link->fd = fd;
+   new->key = key;
+   new->fd = fd;
 	
    //point it to old first l_node
-   link->next = list->first;
+   new->next = head;
 	
    //point first to new first l_node
-   list->first = link;
+   head = new;
+
+   return head;
 }
 
 //delete first item
-l_node* delete_first(list_t* list) {
-   l_node* head = list->first;
+l_node* delete_first(l_node* head) {
+   // l_node* head = list->first;
 
-
-   //save reference to first link
+   //save reference to first new
    l_node *tempLink = head;
 	
-   //mark next to first link as first 
+   //mark next to first new as first 
    head = head->next;
 	
-   //return the deleted link
+   //return the deleted new
    return tempLink;
 }
 
 //is list empty
-bool is_empty(list_t* list) {
-   l_node* head = list->first;
+bool is_empty(l_node* head) {
    return head == NULL;
 }
 
-int length(list_t* list) {
-   l_node* head = list->first;
+int length(l_node* head) {
+   // l_node* head = list->first;
    int length = 0;
    l_node *current;
 	
@@ -74,11 +74,11 @@ int length(list_t* list) {
    return length;
 }
 
-//find a link with given key
-l_node* find(list_t* list, int key) {
-   l_node* head = list->first;
+//find a new with given key
+l_node* find(l_node* head, int key) {
+   // l_node* head = list->first;
 
-   //start from the first link
+   //start from the first new
    l_node* current = head;
 
    //if list is empty
@@ -93,7 +93,7 @@ l_node* find(list_t* list, int key) {
       if(current->next == NULL) {
          return NULL;
       } else {
-         //go to next link
+         //go to next new
          current = current->next;
       }
    }      
@@ -102,11 +102,11 @@ l_node* find(list_t* list, int key) {
    return current;
 }
 
-//delete a link with given key
-l_node* delete(list_t* list, int key) {
-   l_node* head = list->first;
+//delete a new with given key
+l_node* delete(l_node* head, int key) {
+   // l_node* head = list->first;
 
-   //start from the first link
+   //start from the first new
    l_node* current = head;
    l_node* previous = NULL;
 	
@@ -122,19 +122,19 @@ l_node* delete(list_t* list, int key) {
       if(current->next == NULL) {
          return NULL;
       } else {
-         //store reference to current link
+         //store reference to current new
          previous = current;
-         //move to next link
+         //move to next new
          current = current->next;
       }
    }
 
-   //found a match, update the link
+   //found a match, update the new
    if(current == head) {
-      //change first to point to next link
+      //change first to point to next new
       head = head->next;
    } else {
-      //bypass the current link
+      //bypass the current new
       previous->next = current->next;
    }    
 	
