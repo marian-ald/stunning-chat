@@ -3,7 +3,7 @@
 #include <semaphore.h>
 
 // Maximum length of the message
-#define MAX 80 
+#define MAX 80
 #define CMD_NB 7
 #define CHAN_NB 4
 
@@ -58,8 +58,8 @@ typedef struct channel_t
 	int id;
 	int nb_clients;
 	sem_t mutex;
-	char* c_name;
-	char* c_descr;
+	char c_name[MAX];
+	char c_descr[MAX];
 } channel_t;
 
 void parse_msg(char* raw_msg, body_msg_t* msg);

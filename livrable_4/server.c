@@ -32,8 +32,8 @@ void init_channels(int n)
 		channels[i].id = i;
 		channels[i].nb_clients = 0;
 		sem_init(&channels[i].mutex, 0, 1);
-		channels[i].c_name = NULL;
-		channels[i].c_descr = NULL;
+		strcpy(channels[i].c_name, "");
+		strcpy(channels[i].c_descr, "");
 	}
 }
 
@@ -99,7 +99,7 @@ void add_cli_to_channel(int channel_id, l_node* client, char* buf)
 		}
 		else
 		{
-			sprintf(buf, "Welcome to channel %d!\n", client->channel_id);
+			sprintf(buf, "Welcome to channel %d!\n", channel_id);
 			client->channel_id = channel_id;
 			channels[channel_id].nb_clients++;
 		}
@@ -111,6 +111,7 @@ void add_cli_to_channel(int channel_id, l_node* client, char* buf)
 
 void rm_cli_from_channel(l_node* client, char* buf)
 {
+	printf("Inainte de stergere channel_id = %d\n", client->channel_id);
 	if (client->channel_id == -1)
 	{
 		sprintf(buf, "You are not in any channel \n");
@@ -158,13 +159,16 @@ void list_channels(int fd_client)
 
 	for (int i = 0; i < nb_channels; ++i)
 	{
-		if (channels[i].c_name == NULL)
+		if (channels[i].id > -1)
 		{
-			sprintf(send_buf, "id:%d  name:\"\"  nb_cli:%d/%d  descr:\"\"\n",
-				channels[i].id, channels[i].nb_clients, nb_clients);
-		}
-		else
-		{
+
+		// if (channels[i].c_name == NULL)
+		// {
+		// 	sprintf(send_buf, "id:%d  name:\"\"  nb_cli:%d/%d  descr:\"\"\n",
+		// 		channels[i].id, channels[i].nb_clients, nb_clients);
+		// }
+		// else
+		// {
 			sprintf(send_buf, "id:%d  name:%s  nb_cli=%d/%d  descr: %s\n", channels[i].id,
 			channels[i].c_name, channels[i].nb_clients, nb_clients, channels[i].c_descr);
 		}
@@ -175,9 +179,29 @@ void list_channels(int fd_client)
 	}
 }
 
-void remove_channel(int id)
+void remove_channel(l_node* client, int id)
 {
+	char send_buf[MAX];
+	int return_val;
 
+	if (id > nb_channels || channels[id].id == -1)
+	{
+		sprintf(send_buf, "This channel does not exist.\n");
+	}
+	else
+	{
+		if (channels[id].nb_clients > 0)
+		{
+			sprintf(send_buf, "This channel is not empty, wait for the users to exit.\n");
+		}
+		else
+		{
+			channels[id].id = -1;
+			sprintf(send_buf, "Channel %d has been removed.\n", id);
+		}
+	}
+	return_val = send(client->fd, send_buf, MAX, 0);
+	CHECK(return_val < 0, "Server fails sending message to client");
 }
 
 
@@ -277,12 +301,15 @@ void* recv_send(void* cli)
 			CHECK(return_val < 0, "Server fails sending message to client");
 			return 0;
 		}
-		if (strncmp(recv_buf, "\\rm_c", 5) == 0)
+		if (strncmp(recv_buf, "rm_c", 4) == 0)
 		{
 			parse_msg(recv_buf, &msg);
 			int rm_channel_id = atoi(msg.body);
 			printf("Client rm channel %d\n", rm_channel_id);
+			sem_wait(&channels[rm_channel_id].mutex);
+			remove_channel(client, rm_channel_id);
 
+			sem_post(&channels[rm_channel_id].mutex);
 		}
 
 		send_msg_channel(client, recv_buf);
@@ -352,7 +379,7 @@ int main(int argc, char* argv[])
 		clients = add_first(clients, 0, fd_client);
 		clients->key = i;
 		clients->channel_id = -1;
-		sprintf(buffer, "Hello, client! You are connected to the server\n");
+		sprintf(buffer, "\nHello, client! You are connected to the server\n");
 		printf("1\n");
 		int return_val = send(fd_client, buffer, strlen(buffer), 0); 	
 
@@ -369,7 +396,6 @@ int main(int argc, char* argv[])
 		printf("3\n");
 
 		CHECK(return_val != 0, "Fail to create thread");
-
 
 
 
