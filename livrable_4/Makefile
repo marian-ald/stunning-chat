@@ -8,8 +8,8 @@ PORT = 8080
 # Server's IP
 IP_SERVER = 127.0.0.1
 
-NB_CHANNELS = 3
-NB_CLI = 3
+NB_CHANNELS = 2
+NB_CLI = 2
 all: client server
 
 # Compile server.c

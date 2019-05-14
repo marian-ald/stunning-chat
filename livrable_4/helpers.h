@@ -4,7 +4,7 @@
 
 // Maximum length of the message
 #define MAX 80 
-#define CMD_NB 4
+#define CMD_NB 7
 #define CHAN_NB 4
 
 //MAX num of clients in a channel
@@ -49,6 +49,8 @@ typedef struct body_msg_t
 {
 	char type[10];
 	char body[MAX];
+	char name[MAX];
+	char descr[MAX];
 } body_msg_t;
 
 typedef struct channel_t

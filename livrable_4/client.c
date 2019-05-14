@@ -15,16 +15,20 @@ char cmds[CMD_NB][MAX] = {
 	"\\cmd - list all commands",
 	"\\list - show a list with all channels",
 	"\\join - join to one of listed channels",
-	"\\exit - exit from the channel"};
+	"\\exit - exit from the channel",
+	"\\add_c - add a new channel",
+	"\\edit_c - edit a channel",
+	"\\rm_c - remove channel"
+	};
 
 
 
 pthread_t threads[2];
+int is_connected = 0;
 
-
-int CHECK_fin_message(char* message)
+int check_fin_message(char* message)
 {
-	if (strncmp(message, "fin", 3) == 0)
+	if (strncmp(message, "\\fin", 4) == 0)
 	{
 		printf("Client has stopped\n");
 		return 1;
@@ -50,6 +54,7 @@ void *send_msg(void* fd)
 	int return_val;
 	char buffer[MAX];
 	char channel[MAX];
+	int ok_exit = 0;
 	// int in_channel = 0;
 
 	while (1) {
@@ -83,20 +88,38 @@ void *send_msg(void* fd)
 			// else
 			// {
 				buffer[strlen(buffer) - 1] = '\0';
+				is_connected = 0;
 			// }
+		}
+		else if (check_fin_message(buffer))
+		{
+			pthread_cancel(threads[1]);
+			ok_exit = 1;
+		}
+		else if (strcmp(buffer, "\\rm_c\n") == 0)
+		{
+			printf("Introduce channel's id:");
+			fgets(channel, MAX, stdin);
+			channel[strlen(channel) - 1] = '\0';
+			sprintf(buffer, "rm_c-%s", channel);
 		}
 		else
 		{
+			if (is_connected)
+			{
+				return_val = send(*fd_server, buffer, MAX, 0);
+				CHECK(return_val < 0, "Client fails sending message to server");
+			}
 			continue;
 		}
 
 		return_val = send(*fd_server, buffer, MAX, 0);
 		CHECK(return_val < 0, "Client fails sending message to server");
 
-		// if (CHECK_fin_message(buffer)) {
-		// 	pthread_cancel(threads[1]);
-		// 	break;
-		// }
+		if (ok_exit) {
+			pthread_cancel(threads[1]);
+			break;
+		}
 	}
 
 	return 0;
@@ -116,17 +139,18 @@ void *receive_msg(void* fd)
 		// printf("Server: ");
 		puts(buffer);
 
-		if (strncmp(buffer, "list", 4) == 0)
+		if (strncmp(buffer, "Welcome", 7) == 0)
 		{
+			is_connected = 1;
 			// print_commands();
 			continue;
 		}
-/*
-		if (CHECK_fin_message(buffer)) {
-			pthread_cancel(threads[0]);
-			break;
-		}
-*/
+						
+
+		// if (check_fin_message(buffer)) {
+		// 	pthread_cancel(threads[0]);
+		// 	break;
+		// }
 	}
 	return 0;
 }
