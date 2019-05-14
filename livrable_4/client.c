@@ -44,6 +44,20 @@ void print_commands() {
 	}
 }
 
+void read_details(char* buffer)
+{
+	char aux[MAX];
+
+	printf("Introduce channel's name: ");
+	fgets(aux, MAX, stdin);
+	aux[strlen(aux) - 1] = '-';
+	strcat(buffer, aux);
+	printf("Introduce channel's description: ");
+	fgets(aux, MAX, stdin);
+	aux[strlen(aux) - 1] = '\0';
+	strcat(buffer, aux);
+}
+
 /*
  * Reads a message from keyboard into the buffer and sends to
  * the channel defined by sockfd
@@ -73,7 +87,7 @@ void *send_msg(void* fd)
 		}
 		else if (strcmp(buffer, "\\join\n") == 0)
 		{
-			printf("Introduce channel's id:");
+			printf("Introduce channel's id: ");
 			fgets(channel, MAX, stdin);
 			channel[strlen(channel) - 1] = '\0';
 			sprintf(buffer, "join-%s", channel);
@@ -98,10 +112,39 @@ void *send_msg(void* fd)
 		}
 		else if (strcmp(buffer, "\\rm_c\n") == 0)
 		{
-			printf("Introduce channel's id:");
+			printf("Introduce channel's id: ");
 			fgets(channel, MAX, stdin);
 			channel[strlen(channel) - 1] = '\0';
 			sprintf(buffer, "rm_c-%s", channel);
+		}
+		else if (strcmp(buffer, "\\edit_c\n") == 0)
+		{
+			printf("Introduce channel's id: ");
+			fgets(channel, MAX, stdin);
+			channel[strlen(channel) - 1] = '-';
+			sprintf(buffer, "edit_c-%s", channel);
+			// printf("Introduce channel's name: ");
+			// fgets(channel, MAX, stdin);
+			// channel[strlen(channel) - 1] = '-';
+			// strcat(buffer, channel);
+			// printf("Introduce channel's description: ");
+			// fgets(channel, MAX, stdin);
+			// channel[strlen(channel) - 1] = '\0';
+			// strcat(buffer, channel);
+			read_details(buffer);
+		}
+		else if (strcmp(buffer, "\\add_c\n") == 0)
+		{
+			sprintf(buffer, "add_c-%d-", 0);
+			// printf("Introduce channel's name: ");
+			// fgets(channel, MAX, stdin);
+			// channel[strlen(channel) - 1] = '-';
+			// strcat(buffer, channel);
+			// printf("Introduce channel's description: ");
+			// fgets(channel, MAX, stdin);
+			// channel[strlen(channel) - 1] = '\0';
+			// strcat(buffer, channel);
+			read_details(buffer);
 		}
 		else
 		{
@@ -121,7 +164,6 @@ void *send_msg(void* fd)
 			break;
 		}
 	}
-
 	return 0;
 }
 

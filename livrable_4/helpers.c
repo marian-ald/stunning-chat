@@ -71,10 +71,26 @@ void parse_msg(char* raw_msg, body_msg_t* msg) {
 	strcpy(deserial, raw_msg);
 	char* type = strtok(deserial, "-");
 
- 	strcpy(msg->type, type);
+	strcpy(msg->type, type);
 
- 	type = strtok(NULL, "-");
- 	strcpy(msg->body, type); 	
+	type = strtok(NULL, "-");
+	strcpy(msg->body, type);
+	printf("cur ------------------\n");
+	if (!strcmp(msg->type, "edit_c") || !strcmp(msg->type, "add_c"))
+	{
+	printf("cur 1------------------\n");
+
+		type = strtok(NULL, "-");
+	printf("cur 2------------------\n");
+
+		strcpy(msg->name, type);
+	printf("cur 3------------------\n");
+
+		type = strtok(NULL, "-");
+	printf("cur 4------------------\n");
+
+		strcpy(msg->descr, type);
+ 	}
 }
 
 
