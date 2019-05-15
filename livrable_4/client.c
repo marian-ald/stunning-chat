@@ -10,7 +10,8 @@
 
 #include "helpers.h"
 
-
+/* 	List with all available commands and their description
+for the user */
 char cmds[CMD_NB][MAX] = {
 	"\\cmd - list all commands",
 	"\\list - show a list with all channels",
@@ -22,7 +23,6 @@ char cmds[CMD_NB][MAX] = {
 	};
 
 
-
 pthread_t threads[2];
 int is_connected = 0;
 
@@ -30,12 +30,13 @@ int check_fin_message(char* message)
 {
 	if (strncmp(message, "\\fin", 4) == 0)
 	{
-		printf("Client has stopped\n");
+		printf("Client has been disconnected\n");
 		return 1;
 	}
 	return 0;
 }
 
+/* Displaly the user's available commands */
 void print_commands() {
 	printf("Available commands\n");
 	for (int i = 0; i < CMD_NB; ++i)
@@ -44,6 +45,7 @@ void print_commands() {
 	}
 }
 
+/* Read from stdion the name and the description for a channel */
 void read_details(char* buffer)
 {
 	char aux[MAX];
@@ -69,10 +71,10 @@ void *send_msg(void* fd)
 	char buffer[MAX];
 	char channel[MAX];
 	int ok_exit = 0;
-	// int in_channel = 0;
 
 	while (1) {
-
+		/* Read a command from stdin, parse it, and send it to the
+		server */
 		fgets(buffer, MAX, stdin);
 		printf("\n");
 
@@ -94,16 +96,8 @@ void *send_msg(void* fd)
 		}
 		else if (strcmp(buffer, "\\exit\n") == 0)
 		{
-			// if (!in_channel)
-			// {
-			// 	printf("Not in a channel\n");
-			// 	continue;
-			// }
-			// else
-			// {
-				buffer[strlen(buffer) - 1] = '\0';
-				is_connected = 0;
-			// }
+			buffer[strlen(buffer) - 1] = '\0';
+			is_connected = 0;
 		}
 		else if (check_fin_message(buffer))
 		{
@@ -123,27 +117,11 @@ void *send_msg(void* fd)
 			fgets(channel, MAX, stdin);
 			channel[strlen(channel) - 1] = '-';
 			sprintf(buffer, "edit_c-%s", channel);
-			// printf("Introduce channel's name: ");
-			// fgets(channel, MAX, stdin);
-			// channel[strlen(channel) - 1] = '-';
-			// strcat(buffer, channel);
-			// printf("Introduce channel's description: ");
-			// fgets(channel, MAX, stdin);
-			// channel[strlen(channel) - 1] = '\0';
-			// strcat(buffer, channel);
 			read_details(buffer);
 		}
 		else if (strcmp(buffer, "\\add_c\n") == 0)
 		{
 			sprintf(buffer, "add_c-%d-", 0);
-			// printf("Introduce channel's name: ");
-			// fgets(channel, MAX, stdin);
-			// channel[strlen(channel) - 1] = '-';
-			// strcat(buffer, channel);
-			// printf("Introduce channel's description: ");
-			// fgets(channel, MAX, stdin);
-			// channel[strlen(channel) - 1] = '\0';
-			// strcat(buffer, channel);
 			read_details(buffer);
 		}
 		else
@@ -178,21 +156,13 @@ void *receive_msg(void* fd)
 	while (1) {
 		return_val = recv(*fd_server, buffer, MAX, 0); 
 		CHECK(return_val < 0, "Client fails receiving message from server");
-		// printf("Server: ");
 		puts(buffer);
 
 		if (strncmp(buffer, "Welcome", 7) == 0)
 		{
 			is_connected = 1;
-			// print_commands();
 			continue;
 		}
-						
-
-		// if (check_fin_message(buffer)) {
-		// 	pthread_cancel(threads[0]);
-		// 	break;
-		// }
 	}
 	return 0;
 }
@@ -209,7 +179,6 @@ int main(int argc, char* argv[])
 		printf("Args: parameter for server's ip&port is missing\n");	
 		exit(0);
 	}
-
 
 	sockfd = socket(AF_INET, SOCK_STREAM, 0);
 	if (sockfd != -1) {
@@ -229,13 +198,6 @@ int main(int argc, char* argv[])
 	return_val = connect(sockfd, (struct sockaddr*)&servaddr, sizeof(servaddr));
 	CHECK(return_val != 0, "Cannot connect to the server\n");
 
-	// // Client is waiting for hello message from server
-	// bzero(buff_recv, MAX);
-	// return_val = recv(sockfd, buff_recv, MAX, 0); 
-	// CHECK(return_val < 0, "Error receiving the message from server");
-
-	// printf("Server: %s\n", buff_recv);
-
 	print_commands();
 
 	/*
@@ -251,7 +213,7 @@ int main(int argc, char* argv[])
 
 	for (int i = 0; i < 2; ++i)
 	{
-		return_val = pthread_join(threads[i], 0);
+		int return_val = pthread_join(threads[i], 0);
 		CHECK(return_val != 0, "Failed to join thread");
 	}
 
