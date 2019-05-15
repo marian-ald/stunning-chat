@@ -404,10 +404,12 @@ int main(int argc, char* argv[])
 		int fd_client = accept(sockfd, (struct sockaddr*)&cli, &len_cli);
 
 		/* For each client connected to the server add a node in the clients list */
+		pthread_mutex_lock(&mutex_clients);
 		clients = add_first(clients, 0, fd_client);
 		clients->key = i;
 		clients->channel_id = -1;
-
+		pthread_mutex_unlock(&mutex_clients);
+		
 		/* Send a 'hello' message to the client */
 		sprintf(buffer, "\nHello, client! You are connected to the server\n");
 		return_val = send(fd_client, buffer, strlen(buffer), 0); 	
